@@ -1,7 +1,5 @@
 import { useState } from "react";
-
-// ─── API ─────────────────────────────────────────────
-const API_BASE = process.env.REACT_APP_API_URL;
+import { authApi } from '../services/api';
 
 // ─── Token Helper ────────────────────────────────────
 const storeSession = (data) => {
@@ -45,15 +43,7 @@ const Spinner = () => (
 );
 
 // ─── Input Component ─────────────────────────────────
-const Input = ({
-  label,
-  type = "text",
-  name,
-  value,
-  onChange,
-  error,
-  rightElement
-}) => (
+const Input = ({ label, type = "text", name, value, onChange, error, rightElement }) => (
   <div>
     <label className="block text-xs font-semibold mb-2 text-slate-500">
       {label}
@@ -74,18 +64,16 @@ const Input = ({
         </div>
       )}
     </div>
-    {error && (
-      <p className="text-xs text-red-500 mt-1">{error}</p>
-    )}
+    {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
   </div>
 );
 
 // ─── Main Component ──────────────────────────────────
 export default function AuthPage() {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm]               = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   const handleChange = (e) => {
@@ -94,7 +82,7 @@ export default function AuthPage() {
 
   const validate = () => {
     const errors = {};
-    if (!form.email) errors.email = "Email required";
+    if (!form.email)    errors.email    = "Email required";
     if (!form.password) errors.password = "Password required";
     return errors;
   };
@@ -109,102 +97,79 @@ export default function AuthPage() {
 
     setLoading(true);
     setError("");
+    setFieldErrors({});
 
     try {
-      const res = await fetch(`${API_BASE}/login/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        storeSession(data);
-        window.location.href = "/dashboard";
-      } else {
-        setError(data.error || data.detail || "Invalid credentials");
-      }
-    } catch {
-      setError("Network error. Try again.");
+      const data = await authApi.login(form);
+      storeSession(data);
+      window.location.href = "/dashboard";
+    } catch (err) {
+      setError(err.error || err.detail || "Invalid credentials");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      <div className="min-h-screen flex">
+    <div className="min-h-screen flex">
 
-        {/* Left Panel */}
-        <div className="hidden lg:flex w-5/12 bg-[#001f3f] text-white
-                        items-center justify-center p-12">
-          <div>
-            <h1 className="text-4xl font-bold mb-4">
-              IT Infrastructure
-            </h1>
-            <p className="text-white/70">
-              Rwanda National Police
-            </p>
-          </div>
-        </div>
-
-        {/* Right Panel */}
-        <div className="flex-1 flex items-center justify-center bg-slate-100 p-6">
-          <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
-
-            <h2 className="text-2xl font-bold mb-6 text-slate-800">
-              Welcome Back
-            </h2>
-
-            {error && (
-              <div className="mb-4 text-red-600 text-sm">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-5">
-
-              <Input
-                label="Email"
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                error={fieldErrors.email}
-              />
-
-              <Input
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                error={fieldErrors.password}
-                rightElement={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                }
-              />
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-[#003580] text-white py-3 rounded-xl
-                           flex items-center justify-center gap-2
-                           disabled:opacity-50"
-              >
-                {loading ? <Spinner /> : "Sign In"}
-              </button>
-
-            </form>
-          </div>
+      {/* Left Panel */}
+      <div className="hidden lg:flex w-5/12 bg-[#001f3f] text-white
+                      items-center justify-center p-12">
+        <div>
+          <h1 className="text-4xl font-bold mb-4">IT Infrastructure</h1>
+          <p className="text-white/70">Rwanda National Police</p>
         </div>
       </div>
-    </>
+
+      {/* Right Panel */}
+      <div className="flex-1 flex items-center justify-center bg-slate-100 p-6">
+        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
+
+          <h2 className="text-2xl font-bold mb-6 text-slate-800">Welcome Back</h2>
+
+          {error && (
+            <div className="mb-4 text-red-600 text-sm">{error}</div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-5">
+
+            <Input
+              label="Email"
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              error={fieldErrors.email}
+            />
+
+            <Input
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              error={fieldErrors.password}
+              rightElement={
+                <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              }
+            />
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#003580] text-white py-3 rounded-xl
+                         flex items-center justify-center gap-2
+                         disabled:opacity-50"
+            >
+              {loading ? <Spinner /> : "Sign In"}
+            </button>
+
+          </form>
+        </div>
+      </div>
+    </div>
   );
 }
