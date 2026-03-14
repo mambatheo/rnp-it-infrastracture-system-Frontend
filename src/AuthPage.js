@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 // ─── API ─────────────────────────────────────────────
-const API_BASE = "http://localhost:8000/api/v1/accounts/auth";
+const API_BASE = process.env.REACT_APP_API_URL;
 
 // ─── Token Helper ────────────────────────────────────
 const storeSession = (data) => {
