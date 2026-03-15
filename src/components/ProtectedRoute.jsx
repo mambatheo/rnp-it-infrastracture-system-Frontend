@@ -8,6 +8,11 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // Force first-login password change before accessing any page
+  if (localStorage.getItem('is_first_login') === 'true') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (roles.length > 0 && !roles.includes(role)) {
     return <Navigate to="/unauthorized" replace />;
   }

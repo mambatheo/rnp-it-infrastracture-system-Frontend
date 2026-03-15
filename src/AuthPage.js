@@ -7,6 +7,7 @@ const storeSession = (data) => {
   localStorage.setItem("refresh_token", data.refresh);
   localStorage.setItem("user", JSON.stringify(data.user));
   localStorage.setItem("role", data.user?.role || '');
+  localStorage.setItem("is_first_login", data.is_first_login ? "true" : "false");
 };
 
 // ─── Simple Icons ─────────────────────────────────────
@@ -102,7 +103,8 @@ export default function AuthPage() {
     try {
       const data = await authApi.login(form);
       storeSession(data);
-      window.location.href = "/dashboard";
+      // Redirect to change-password page if this is the user's first login
+      window.location.href = data.is_first_login ? "/change-password" : "/dashboard";
     } catch (err) {
       setError(err.error || err.detail || "Invalid credentials");
     } finally {

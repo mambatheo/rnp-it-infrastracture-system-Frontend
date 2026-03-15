@@ -14,15 +14,17 @@ import Maintenance from './pages/Maintenance';
 import MyRequests  from './pages/MyRequests';
 import Reports     from './pages/Reports';
 import Settings    from './pages/Settings';
-import Login       from './pages/Login';
-import Unauthorized from './pages/Unauthorized';
+import Login           from './pages/Login';
+import ChangePassword  from './pages/ChangePassword';
+import Unauthorized    from './pages/Unauthorized';
 
 export default function App() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/login"        element={<Login />} />
-      <Route path="/unauthorized" element={<Unauthorized />} />
+      <Route path="/login"           element={<Login />} />
+      <Route path="/change-password" element={<ChangePassword />} />
+      <Route path="/unauthorized"    element={<Unauthorized />} />
 
       {/* All authenticated users */}
       <Route path="/dashboard" element={

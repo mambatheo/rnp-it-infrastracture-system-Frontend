@@ -54,15 +54,16 @@ export const authApi = {
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 export const usersApi = {
-  list:       (p)     => get('/accounts/users/', p),
-  retrieve:   (id)    => get(`/accounts/users/${id}/`),
-  create:     (data)  => post('/accounts/users/', data),
-  update:     (id, d) => patch(`/accounts/users/${id}/`, d),
-  activate:   (id)    => post(`/accounts/users/${id}/activate/`),
-  deactivate: (id)    => post(`/accounts/users/${id}/deactivate/`),
-  resetPw:    (id, d) => post(`/accounts/users/${id}/reset_password/`, d),
-  me:         ()      => get('/accounts/users/me/'),
-  delete:     (id)    => del(`/accounts/users/${id}/`),
+  list:           (p)     => get('/accounts/users/', p),
+  retrieve:       (id)    => get(`/accounts/users/${id}/`),
+  create:         (data)  => post('/accounts/users/', data),
+  update:         (id, d) => patch(`/accounts/users/${id}/`, d),
+  activate:       (id)    => post(`/accounts/users/${id}/activate/`),
+  deactivate:     (id)    => post(`/accounts/users/${id}/deactivate/`),
+  resetPw:        (id, d) => post(`/accounts/users/${id}/reset_password/`, d),
+  me:             ()      => get('/accounts/users/me/'),
+  delete:         (id)    => del(`/accounts/users/${id}/`),
+  changePassword: (data)  => post('/accounts/users/change_password/', data),
 };
 
 // ─── Equipment Categories ─────────────────────────────────────────────────────
