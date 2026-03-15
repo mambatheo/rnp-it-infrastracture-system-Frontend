@@ -1,4 +1,4 @@
-const BASE = process.env.REACT_APP_API_URL || 'https://rnp-it-infrastracture-system-backend.onrender.com';
+const BASE = process.env.REACT_APP_API_URL || 'https://historical-clair-it-infrastracture-system-e80431e7.koyeb.app';
 
 // ─── Base request ─────────────────────────────────────────────────────────────
 async function request(method, path, body) {
