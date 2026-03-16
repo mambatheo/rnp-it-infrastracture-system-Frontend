@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { usersApi, dpusApi, regionsApi, unitsApi } from '../services/api';
-import { ROLES, ROLE_LABELS } from '../config/permissions';
+import { ROLE_LABELS } from '../config/permissions';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([v, l]) => ({ value: v, label: l }));
