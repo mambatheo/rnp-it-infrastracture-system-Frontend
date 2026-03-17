@@ -257,6 +257,11 @@ export default function Users() {
 
   // ── Create ─────────────────────────────────────────────────────────────────
   const handleCreate = async () => {
+    // Client-side guard: at least one location must be selected
+    if (!form.dpu && !form.region && !form.unit) {
+      setFormErrors({ non_field_errors: 'At least one of DPU, Region, or Unit must be assigned to the user.' });
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {

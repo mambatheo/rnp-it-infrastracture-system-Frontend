@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useIdleTimeout } from '../hooks/useIdleTimeout';
 import { ROUTES } from '../config/routes';
 
 // ─── Icons (inline SVG) ───────────────────────────────────────────────────────
@@ -141,10 +142,14 @@ function NavItem({ route, collapsed }) {
   );
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
+// ─── Layout ──────────────────────────────────────────────────────────────────
 export default function Layout({ children }) {
   const { user, role, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Auto-logout after 15 minutes of inactivity
+  const handleIdleLogout = useCallback(() => logout(), [logout]);
+  useIdleTimeout({ onLogout: handleIdleLogout });
 
   const filteredRoutes = ROUTES.filter(r => r.roles.includes(role));
 

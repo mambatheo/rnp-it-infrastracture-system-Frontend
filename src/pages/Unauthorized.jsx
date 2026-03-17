@@ -1,7 +1,13 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 
 export default function Unauthorized() {
   const navigate = useNavigate();
+
+  // If token is gone (e.g. after idle logout), send to login instead
+  if (!localStorage.getItem('access_token')) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="bg-white rounded-2xl shadow-xl p-10 text-center max-w-sm w-full">
