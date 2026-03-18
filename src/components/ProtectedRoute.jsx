@@ -9,18 +9,18 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Force first-login password change before accessing any page
-  if (localStorage.getItem('is_first_login') === 'true') {
-    return <Navigate to="/change-password" replace />;
-  }
-
-  // Has a token but no role stored → corrupted session, force re-login
+  // Authenticated but role is missing → broken/stale session, force fresh login
   if (!role) {
     localStorage.clear();
     return <Navigate to="/login" replace />;
   }
 
-  // Role doesn't match this route
+  // Force first-login password change before accessing any page
+  if (localStorage.getItem('is_first_login') === 'true') {
+    return <Navigate to="/change-password" replace />;
+  }
+
+  // Role doesn't match this route → access denied
   if (roles.length > 0 && !roles.includes(role)) {
     return <Navigate to="/unauthorized" replace />;
   }

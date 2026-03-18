@@ -53,7 +53,7 @@ export const ROUTES = [
     path: '/reports',
     label: 'Reports',
     icon: 'FileBarChart',
-    roles: [ROLES.ADMIN, ROLES.IT_STAFF],
+    roles: [ROLES.ADMIN, ROLES.IT_STAFF, ROLES.TECHNICIAN],
   },
   {
     path: '/settings',

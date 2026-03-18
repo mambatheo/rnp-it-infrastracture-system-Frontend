@@ -22,9 +22,11 @@ export default function App() {
   return (
     <Routes>
       {/* Public */}
+      <Route path="/"              element={<Navigate to="/dashboard" replace />} />
       <Route path="/login"           element={<Login />} />
       <Route path="/change-password" element={<ChangePassword />} />
       <Route path="/unauthorized"    element={<Unauthorized />} />
+
 
       {/* All authenticated users */}
       <Route path="/dashboard" element={

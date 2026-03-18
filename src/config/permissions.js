@@ -1,7 +1,7 @@
 // Role constants — must match backend User model values exactly
 export const ROLES = {
   ADMIN:      'ADMIN',
-  IT_STAFF:   'IT STAFF',
+  IT_STAFF:   'IT_STAFF',
   TECHNICIAN: 'TECHNICIAN',
   USER:       'USER',
 };
@@ -9,7 +9,7 @@ export const ROLES = {
 // Permission helpers
 export const ROLE_LABELS = {
   'ADMIN':      'Admin',
-  'IT STAFF':   'IT Staff',
+  'IT_STAFF':   'IT Staff',
   'TECHNICIAN': 'Technician',
   'USER':       'User',
 };

@@ -95,6 +95,14 @@ function UserForm({ form, onChange, isEdit = false, errors = {}, dpus, regions, 
           Location Assignment <span className="text-red-500">*</span>
           <span className="text-slate-400 font-normal ml-1">(at least one)</span>
         </p>
+
+        {/* Warn when no location data has been seeded yet */}
+        {dpus.length === 0 && regions.length === 0 && units.length === 0 && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            ⚠️ No locations available yet. Go to <strong>Settings</strong> to create DPUs, Regions, or Units first.
+          </p>
+        )}
+
         <Field label="DPU">
           <SelectField name="dpu" value={form.dpu} onChange={onChange} options={dpus} placeholder="— None —" />
         </Field>
@@ -257,11 +265,17 @@ export default function Users() {
 
   // ── Create ─────────────────────────────────────────────────────────────────
   const handleCreate = async () => {
-    // Client-side guard: at least one location must be selected
-    if (!form.dpu && !form.region && !form.unit) {
+    const dpuId    = form.dpu    ? parseInt(form.dpu,    10) : null;
+    const regionId = form.region ? parseInt(form.region, 10) : null;
+    const unitId   = form.unit   ? parseInt(form.unit,   10) : null;
+
+    // Guard: at least one must be a valid positive integer
+    const hasLocation = [dpuId, regionId, unitId].some(id => id && !isNaN(id));
+    if (!hasLocation) {
       setFormErrors({ non_field_errors: 'At least one of DPU, Region, or Unit must be assigned to the user.' });
       return;
     }
+
     setSubmitting(true);
     try {
       const payload = {
@@ -272,10 +286,10 @@ export default function Users() {
         role:             form.role,
         password:         form.password,
         password_confirm: form.password_confirm,
-        // only send if a value was chosen
-        ...(form.dpu    ? { dpu:    Number(form.dpu)    } : {}),
-        ...(form.region ? { region: Number(form.region) } : {}),
-        ...(form.unit   ? { unit:   Number(form.unit)   } : {}),
+        // Send explicit null for unset locations — backend marks them allow_null:True
+        dpu:    dpuId,
+        region: regionId,
+        unit:   unitId,
       };
       await usersApi.create(payload);
       showToast('User created successfully');

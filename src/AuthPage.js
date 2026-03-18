@@ -3,12 +3,15 @@ import { authApi } from './services/api';
 
 // ─── Token Helper ────────────────────────────────────
 const storeSession = (data) => {
-  localStorage.setItem("access_token", data.access);
+  // Normalise role: backend may return '' for staff/superusers with no role field set
+  const role = data.user?.role || (data.user?.is_staff ? 'ADMIN' : '');
+  localStorage.setItem("access_token",  data.access);
   localStorage.setItem("refresh_token", data.refresh);
-  localStorage.setItem("user", JSON.stringify(data.user));
-  localStorage.setItem("role", data.user?.role || '');
+  localStorage.setItem("user",          JSON.stringify(data.user));
+  localStorage.setItem("role",          role);
   localStorage.setItem("is_first_login", data.is_first_login ? "true" : "false");
 };
+
 
 // ─── Simple Icons ─────────────────────────────────────
 const EyeIcon = () => (
