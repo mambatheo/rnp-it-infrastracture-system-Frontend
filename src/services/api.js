@@ -1,7 +1,26 @@
-const BASE = (process.env.REACT_APP_API_URL || 'https://historical-clair-it-infrastracture-system-e80431e7.koyeb.app') + '/api/v1';
+const BASE = (process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000') + '/api/v1';
 
-// ─── Base request ─────────────────────────────────────────────────────────────
-async function request(method, path, body) {
+
+let _refreshing = null; // prevent concurrent refresh races
+
+async function refreshTokens() {
+  const refresh = localStorage.getItem('refresh_token');
+  if (!refresh) return false;
+  try {
+    const res = await fetch(`${BASE}/accounts/auth/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    localStorage.setItem('access_token',  data.access);
+    if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+    return true;
+  } catch { return false; }
+}
+
+async function request(method, path, body, _retry = false) {
   const token = localStorage.getItem('access_token');
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -12,7 +31,16 @@ async function request(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !_retry) {
+    if (!_refreshing) _refreshing = refreshTokens().finally(() => { _refreshing = null; });
+    const ok = await _refreshing;
+    if (ok) return request(method, path, body, true);
+    localStorage.clear();
+    window.location.replace('/login');
+    return;
+  }
+
+  if (res.status === 401 && _retry) {
     localStorage.clear();
     window.location.replace('/login');
     return;
@@ -31,19 +59,64 @@ const put    = (path, body)   => request('PUT',    path, body);
 const patch  = (path, body)   => request('PATCH',  path, body);
 const del    = (path)         => request('DELETE', path);
 
-// ─── File download helper ─────────────────────────────────────────────────────
-function download(path, filename) {
+
+// ─── Async report download (Celery polling) ───────────────────────────────────
+// 1. Calls the report URL → backend enqueues task, returns { task_id }
+// 2. Polls every 2 s with ?task_id=<id> until HTTP 200 (file ready)
+// 3. Streams the blob and triggers a browser download
+// Throws on network error or task FAILURE so callers can show error UI.
+async function downloadReport(path, filename) {
   const token = localStorage.getItem('access_token');
-  const sep   = path.includes('?') ? '&' : '?';
-  const url   = `${BASE}${path}${sep}token=${encodeURIComponent(token)}`;
-  const a     = document.createElement('a');
-  a.href      = url;
-  a.download  = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => a.remove(), 100);
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type':  'application/json',
+  };
+  const fullUrl = `${BASE}${path}`;
+
+  // Step 1 — enqueue
+  const enqueueRes = await fetch(fullUrl, { headers });
+  if (!enqueueRes.ok) {
+    throw new Error(`Failed to start report (HTTP ${enqueueRes.status}).`);
+  }
+  const { task_id } = await enqueueRes.json();
+  if (!task_id) throw new Error('No task_id returned from server.');
+
+  // Step 2 — poll
+  const sep     = path.includes('?') ? '&' : '?';
+  const pollUrl = `${fullUrl}${sep}task_id=${task_id}`;
+
+  while (true) {
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const pollRes = await fetch(pollUrl, { headers });
+
+    if (pollRes.status === 202) continue; // still processing
+
+    if (pollRes.ok) {
+      // Step 3 — trigger download
+      const blob      = await pollRes.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a         = document.createElement('a');
+      a.href          = objectUrl;
+      a.download      = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+      return; // done
+    }
+
+    // FAILURE
+    let detail = `Report generation failed (HTTP ${pollRes.status}).`;
+    try {
+      const body = await pollRes.json();
+      if (body.detail) detail = body.detail;
+    } catch (_) {}
+    throw new Error(detail);
+  }
 }
 
+const date = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -162,48 +235,46 @@ export const officesApi = {
   delete: (id)    => del(`/equipment/offices/${id}/`),
 };
 
-// ─── Equipment (unified single endpoint) ─────────────────────────────────────
+// ─── Equipment ────────────────────────────────────────────────────────────────
 export const equipmentApi = {
-  list:    (p)     => get('/equipment/equipment/', p),
-  retrieve:(id)    => get(`/equipment/equipment/${id}/`),
-  create:  (data)  => post('/equipment/equipment/', data),
-  update:  (id, d) => put(`/equipment/equipment/${id}/`, d),
-  patch:   (id, d) => patch(`/equipment/equipment/${id}/`, d),
-  delete:  (id)    => del(`/equipment/equipment/${id}/`),
+  list:     (p)     => get('/equipment/equipment/', p),
+  retrieve: (id)    => get(`/equipment/equipment/${id}/`),
+  create:   (data)  => post('/equipment/equipment/', data),
+  update:   (id, d) => put(`/equipment/equipment/${id}/`, d),
+  patch:    (id, d) => patch(`/equipment/equipment/${id}/`, d),
+  delete:   (id)    => del(`/equipment/equipment/${id}/`),
 };
 
 // ─── Stock ────────────────────────────────────────────────────────────────────
 export const stockApi = {
-  list:    (p)     => get('/equipment/stock/', p),
-  retrieve:(id)    => get(`/equipment/stock/${id}/`),
-  create:  (data)  => post('/equipment/stock/', data),
-  update:  (id, d) => put(`/equipment/stock/${id}/`, d),
-  delete:  (id)    => del(`/equipment/stock/${id}/`),
+  list:     (p)     => get('/equipment/stock/', p),
+  retrieve: (id)    => get(`/equipment/stock/${id}/`),
+  create:   (data)  => post('/equipment/stock/', data),
+  update:   (id, d) => put(`/equipment/stock/${id}/`, d),
+  delete:   (id)    => del(`/equipment/stock/${id}/`),
 };
 
 // ─── Deployments ──────────────────────────────────────────────────────────────
 export const deploymentsApi = {
-  list:    (p)     => get('/equipment/deployments/', p),
-  retrieve:(id)    => get(`/equipment/deployments/${id}/`),
-  create:  (data)  => post('/equipment/deployments/', data),
-  update:  (id, d) => put(`/equipment/deployments/${id}/`, d),
-  patch:   (id, d) => patch(`/equipment/deployments/${id}/`, d),
-  delete:  (id)    => del(`/equipment/deployments/${id}/`),
+  list:     (p)     => get('/equipment/deployments/', p),
+  retrieve: (id)    => get(`/equipment/deployments/${id}/`),
+  create:   (data)  => post('/equipment/deployments/', data),
+  update:   (id, d) => put(`/equipment/deployments/${id}/`, d),
+  patch:    (id, d) => patch(`/equipment/deployments/${id}/`, d),
+  delete:   (id)    => del(`/equipment/deployments/${id}/`),
 };
 
 // ─── Maintenance ──────────────────────────────────────────────────────────────
 export const maintenanceApi = {
-  // Maintenance requests (user-submitted)
   requests: {
-    list:       (p)     => get('/maintenance/requests/', p),
-    myRequests: (p)     => get('/maintenance/requests/my_requests/', p),
-    pending:    ()      => get('/maintenance/requests/pending/'),
-    create:     (data)  => post('/maintenance/requests/', data),
-    update:     (id, d) => patch(`/maintenance/requests/${id}/`, d),
-    updateStatus: (id,d) => post(`/maintenance/requests/${id}/update_status/`, d),
-    delete:     (id)    => del(`/maintenance/requests/${id}/`),
+    list:         (p)      => get('/maintenance/requests/', p),
+    myRequests:   (p)      => get('/maintenance/requests/my_requests/', p),
+    pending:      ()       => get('/maintenance/requests/pending/'),
+    create:       (data)   => post('/maintenance/requests/', data),
+    update:       (id, d)  => patch(`/maintenance/requests/${id}/`, d),
+    updateStatus: (id, d)  => post(`/maintenance/requests/${id}/update_status/`, d),
+    delete:       (id)     => del(`/maintenance/requests/${id}/`),
   },
-  // Notifications
   notifications: {
     list:        (p)  => get('/maintenance/notifications/', p),
     markRead:    (id) => post(`/maintenance/notifications/${id}/mark_read/`),
@@ -227,42 +298,101 @@ export const settingsApi = {
 };
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
-const date = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
+// All download methods now use the Celery async polling pattern via
+// downloadReport(). Each method returns a Promise — awaiting it keeps the
+// spinner alive until the file actually arrives in the browser.
 export const reportsApi = {
-  excelAll:      () => download('/equipment/reports/excel/',  `equipment_report_${date()}.xlsx`),
-  pdfAll:        () => download('/equipment/reports/pdf/',    `equipment_report_${date()}.pdf`),
-  excelByType:   (type) => download(`/equipment/reports/excel/${encodeURIComponent(type)}/`, `${type.replace(/ /g,'_').toLowerCase()}_${date()}.xlsx`),
-  pdfByType:     (type) => download(`/equipment/reports/pdf/${encodeURIComponent(type)}/`,   `${type.replace(/ /g,'_').toLowerCase()}_${date()}.pdf`),
-  // Stock exports
-  stockExcelAll:    () => download('/equipment/reports/stock/excel/',  `stock_report_${date()}.xlsx`),
-  stockPdfAll:      () => download('/equipment/reports/stock/pdf/',    `stock_report_${date()}.pdf`),
-  stockExcelByType: (type) => download(`/equipment/reports/stock/excel/${encodeURIComponent(type)}/`, `stock_${type.replace(/ /g,'_').toLowerCase()}_${date()}.xlsx`),
-  stockPdfByType:   (type) => download(`/equipment/reports/stock/pdf/${encodeURIComponent(type)}/`,   `stock_${type.replace(/ /g,'_').toLowerCase()}_${date()}.pdf`),
-  // Unit-based exports
-  unitExcelAll:   ()             => download('/equipment/reports/unit/excel/',     `units_all_${date()}.xlsx`),
-  unitPdfAll:     ()             => download('/equipment/reports/unit/pdf/',       `units_all_${date()}.pdf`),
-  unitExcelById:  (id, name)     => download(`/equipment/reports/unit/excel/${id}/`, `unit_${(name||'report').replace(/ /g,'_').toLowerCase()}_${date()}.xlsx`),
-  unitPdfById:    (id, name)     => download(`/equipment/reports/unit/pdf/${id}/`,   `unit_${(name||'report').replace(/ /g,'_').toLowerCase()}_${date()}.pdf`),
 
-  // Region-based exports
-  regionExcelAll:   ()             => download('/equipment/reports/region/excel/',     `regions_all_${date()}.xlsx`),
-  regionPdfAll:     ()             => download('/equipment/reports/region/pdf/',       `regions_all_${date()}.pdf`),
-  regionExcelById:  (id, name)     => download(`/equipment/reports/region/excel/${id}/`, `region_${(name||'report').replace(/ /g,'_').toLowerCase()}_${date()}.xlsx`),
-  regionPdfById:    (id, name)     => download(`/equipment/reports/region/pdf/${id}/`,   `region_${(name||'report').replace(/ /g,'_').toLowerCase()}_${date()}.pdf`),
-
-  // DPU-based exports
-  dpuExcelAll:   ()             => download('/equipment/reports/dpu/excel/',     `dpus_all_${date()}.xlsx`),
-  dpuPdfAll:     ()             => download('/equipment/reports/dpu/pdf/',       `dpus_all_${date()}.pdf`),
-  dpuExcelById:  (id, name)     => download(`/equipment/reports/dpu/excel/${id}/`, `dpu_${(name||'report').replace(/ /g,'_').toLowerCase()}_${date()}.xlsx`),
-  dpuPdfById:    (id, name)     => download(`/equipment/reports/dpu/pdf/${id}/`,   `dpu_${(name||'report').replace(/ /g,'_').toLowerCase()}_${date()}.pdf`),
-
-
-  // Aggregated counts — single call for entire Reports page
+  // Aggregated counts — single call that populates the entire Reports page
   counts: () => get('/equipment/reports/counts/'),
 
+  // ── Equipment ──────────────────────────────────────────────────────────────
+  excelAll:    ()     => downloadReport(
+    '/equipment/reports/excel/',
+    `equipment_report_${date()}.xlsx`,
+  ),
+  pdfAll:      ()     => downloadReport(
+    '/equipment/reports/pdf/',
+    `equipment_report_${date()}.pdf`,
+  ),
+  excelByType: (type) => downloadReport(
+    `/equipment/reports/excel/${encodeURIComponent(type)}/`,
+    `${type.replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+  ),
+  pdfByType:   (type) => downloadReport(
+    `/equipment/reports/pdf/${encodeURIComponent(type)}/`,
+    `${type.replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+  ),
 
+  // ── Stock ──────────────────────────────────────────────────────────────────
+  stockExcelAll:    ()     => downloadReport(
+    '/equipment/reports/stock/excel/',
+    `stock_report_${date()}.xlsx`,
+  ),
+  stockPdfAll:      ()     => downloadReport(
+    '/equipment/reports/stock/pdf/',
+    `stock_report_${date()}.pdf`,
+  ),
+  stockExcelByType: (type) => downloadReport(
+    `/equipment/reports/stock/excel/${encodeURIComponent(type)}/`,
+    `stock_${type.replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+  ),
+  stockPdfByType:   (type) => downloadReport(
+    `/equipment/reports/stock/pdf/${encodeURIComponent(type)}/`,
+    `stock_${type.replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+  ),
 
+  // ── Units ──────────────────────────────────────────────────────────────────
+  unitExcelAll:  ()          => downloadReport(
+    '/equipment/reports/unit/excel/',
+    `units_all_${date()}.xlsx`,
+  ),
+  unitPdfAll:    ()          => downloadReport(
+    '/equipment/reports/unit/pdf/',
+    `units_all_${date()}.pdf`,
+  ),
+  unitExcelById: (id, name)  => downloadReport(
+    `/equipment/reports/unit/excel/${id}/`,
+    `unit_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+  ),
+  unitPdfById:   (id, name)  => downloadReport(
+    `/equipment/reports/unit/pdf/${id}/`,
+    `unit_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+  ),
 
+  // ── Regions ────────────────────────────────────────────────────────────────
+  regionExcelAll:  ()         => downloadReport(
+    '/equipment/reports/region/excel/',
+    `regions_all_${date()}.xlsx`,
+  ),
+  regionPdfAll:    ()         => downloadReport(
+    '/equipment/reports/region/pdf/',
+    `regions_all_${date()}.pdf`,
+  ),
+  regionExcelById: (id, name) => downloadReport(
+    `/equipment/reports/region/excel/${id}/`,
+    `region_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+  ),
+  regionPdfById:   (id, name) => downloadReport(
+    `/equipment/reports/region/pdf/${id}/`,
+    `region_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+  ),
 
-
+  // ── DPUs ───────────────────────────────────────────────────────────────────
+  dpuExcelAll:  ()         => downloadReport(
+    '/equipment/reports/dpu/excel/',
+    `dpus_all_${date()}.xlsx`,
+  ),
+  dpuPdfAll:    ()         => downloadReport(
+    '/equipment/reports/dpu/pdf/',
+    `dpus_all_${date()}.pdf`,
+  ),
+  dpuExcelById: (id, name) => downloadReport(
+    `/equipment/reports/dpu/excel/${id}/`,
+    `dpu_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+  ),
+  dpuPdfById:   (id, name) => downloadReport(
+    `/equipment/reports/dpu/pdf/${id}/`,
+    `dpu_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+  ),
 };

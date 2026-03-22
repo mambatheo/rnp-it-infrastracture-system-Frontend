@@ -22,6 +22,7 @@ export function useIdleTimeout({ onLogout }) {
   }, [onLogout]);
 
   useEffect(() => {
+    if (!onLogout) return; // not logged in — do nothing
     resetTimer();
     ACTIVITY_EVENTS.forEach(evt =>
       document.addEventListener(evt, resetTimer, { passive: true })
@@ -32,7 +33,7 @@ export function useIdleTimeout({ onLogout }) {
         document.removeEventListener(evt, resetTimer)
       );
     };
-  }, [resetTimer]);
+  }, [resetTimer, onLogout]);
 }
 
 export default useIdleTimeout;

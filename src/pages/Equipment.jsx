@@ -1,17 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { equipmentApi, brandsApi, statusesApi, regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi, stationsApi, unitsApi, directoratesApi, departmentsApi, officesApi, usersApi } from '../services/api';
+import { equipmentApi, categoriesApi, brandsApi, statusesApi, regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi, stationsApi, unitsApi, directoratesApi, departmentsApi, officesApi, usersApi } from '../services/api';
 
 const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30";
 
-// ─── Equipment type choices (matches backend equipment_type field) ──────────────
-const EQUIPMENT_TYPES = [
-  'Desktop', 'Laptop', 'Server',
-  'TV Screen', 'Projector', 'Decoder',
-  'Printer', 'Network Device', 'Telephone',
-  'External Storage', 'Peripheral', 'UPS',
-];
 
 const PRINTER_TYPES    = ['printer', 'scanner', 'multipurpose'];
 const NETWORK_TYPES    = ['Switch', 'Router', 'Firewall', 'Access_point', 'Repeater', 'Hub', 'Modem', 'Gateway', 'Bridge'];
@@ -116,8 +109,8 @@ function SectionHead({ label }) {
 }
 
 function EquipmentForm({ form, onChange, refs }) {
-  const { brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, users } = refs;
-  const eqType = form.equipment_type || '';
+  const { brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, users, categories } = refs;
+  const eqType = form.equipment_type_name || form.equipment_type || '';
   const intent = form.registration_intent;
 
   const showComputer   = ['Desktop', 'Laptop'].includes(eqType);
@@ -150,9 +143,9 @@ function EquipmentForm({ form, onChange, refs }) {
       <SectionHead label="Device Specifications" />
 
       <F label="Equipment Type *">
-        <select className={inputCls} name="equipment_type" value={eqType} onChange={onChange}>
+        <select className={inputCls} name="equipment_type_name" value={eqType} onChange={onChange}>
           <option value="">— Select Type —</option>
-          {EQUIPMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          {(categories || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
       </F>
 
@@ -249,18 +242,7 @@ function EquipmentForm({ form, onChange, refs }) {
           </select>
         </F>
       )}
-       {/* IT Staff (Issuer) */}
-        <SectionHead label="IT Staff " />
-        <div className="col-span-2">
-          <F label="Added By *">
-            <select className={inputCls} name="issued_by" value={form.issued_by || ''} onChange={onChange}>
-              <option value="">— Select Staff —</option>
-              {(users || []).map(u => (
-                <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.email})</option>
-              ))}
-            </select>
-          </F>
-        </div>
+
 
       {/* ══ Deployment-only fields (hidden for Stock) ══════════════════════ */}
       {isDeployment && (<>
@@ -370,6 +352,7 @@ function EquipmentForm({ form, onChange, refs }) {
 const PAGE_SIZE = 15;
 
 const READONLY_FIELDS = [
+  'equipment_type_name',
   'brand_name', 'status_name',
   'region_name', 'dpu_name', 'station_name', 'unit_name',
   'directorate_name', 'department_name', 'office_name',
@@ -394,7 +377,7 @@ export default function Equipment() {
   const [deleteId, setDeleteId] = useState(null);
   const [toast, setToast]       = useState({ msg: '', type: 'success' });
 
-  const [refs, setRefs] = useState({ brands: [], statuses: [], regionOffices: [], regions: [], dpuOffices: [], dpus: [], stations: [], units: [], directorates: [], departments: [], offices: [], users: [] });
+  const [refs, setRefs] = useState({ categories: [], brands: [], statuses: [], regionOffices: [], regions: [], dpuOffices: [], dpus: [], stations: [], units: [], directorates: [], departments: [], offices: [], users: [] });
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast({ msg: '', type }), 3000); };
 
@@ -402,6 +385,7 @@ export default function Equipment() {
   useEffect(() => {
     const p = { page_size: 500 };
     Promise.allSettled([
+      categoriesApi.list(p),
       brandsApi.list(p),
       statusesApi.list(p),
       regionOfficesApi.list(p),
@@ -414,8 +398,9 @@ export default function Equipment() {
       departmentsApi.list(p),
       officesApi.list(p),
       usersApi.list(p),
-    ]).then(([brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, users]) => {
+    ]).then(([categories, brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, users]) => {
       setRefs({
+        categories:    categories.value?.results    || categories.value    || [],
         brands:        brands.value?.results        || brands.value        || [],
         statuses:      statuses.value?.results      || statuses.value      || [],
         regionOffices: regionOffices.value?.results || regionOffices.value || [],
@@ -437,7 +422,7 @@ export default function Equipment() {
     try {
       const params = { page, page_size: PAGE_SIZE };
       if (search) params.search = search;
-      if (typeFilter) params.equipment_type = typeFilter;
+      if (typeFilter) params['equipment_type__name'] = typeFilter;  // FK name filter
       const d = await equipmentApi.list(params);
       setItems(d.results || []);
       setTotal(d.count || 0);
@@ -450,7 +435,15 @@ export default function Equipment() {
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const openCreate = () => { setForm({}); setSelected(null); setModal('intent'); };
-  const openEdit   = item => { setForm({ ...item }); setSelected(item); setModal('form'); };
+  const openEdit   = item => {
+    setForm({
+      ...item,
+      // equipment_type FK comes back as UUID; the form <select> needs the name string
+      equipment_type: item.equipment_type_name || item.equipment_type || '',
+    });
+    setSelected(item);
+    setModal('form');
+  };
 
   const pickIntent = (intent) => {
     setForm({ registration_intent: intent });
@@ -461,6 +454,15 @@ export default function Equipment() {
     setSub(true);
     try {
       const payload = Object.fromEntries(Object.entries(form).filter(([k]) => !READONLY_FIELDS.includes(k)));
+
+      // Resolve equipment_type_name (string) → equipment_type UUID for the FK
+      if (form.equipment_type_name) {
+        const cat = refs.categories.find(c => c.name === form.equipment_type_name);
+        if (cat) payload.equipment_type = cat.id;
+        else payload.equipment_type = null;
+      }
+      delete payload.equipment_type_name;
+
       // Nullify empty FK strings
       ['brand', 'status', 'region', 'dpu', 'station', 'unit', 'directorate', 'department', 'office'].forEach(k => {
         if (payload[k] === '' || payload[k] === undefined) payload[k] = null;
@@ -503,7 +505,7 @@ export default function Equipment() {
             value={typeFilter}
             onChange={e => { setTypeFilter(e.target.value); setPage(1); }}>
             <option value="">All Types</option>
-            {EQUIPMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            {refs.categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
           <button onClick={openCreate}
             className="ml-auto flex-shrink-0 inline-flex items-center gap-1.5 bg-[#003580] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#002060]">
@@ -532,7 +534,7 @@ export default function Equipment() {
                     className="border-b border-slate-50 hover:bg-[#003580]/5 cursor-pointer"
                     onClick={() => navigate(`/equipment/${item.id}`)}>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">                     
-                      <span className="text-xs font-medium text-slate-500">{item.equipment_type || '—'}</span>
+                      <span className="text-xs font-medium text-slate-500">{item.equipment_type_name || '—'}</span>
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-800">{item.name || '—'}</td>
                     <td className="px-4 py-3 text-slate-600 font-mono text-xs">{item.serial_number || '—'}</td>

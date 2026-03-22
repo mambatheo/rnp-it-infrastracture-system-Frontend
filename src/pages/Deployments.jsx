@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
-import { deploymentsApi, usersApi, equipmentApi, regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi, stationsApi, unitsApi, officesApi, directoratesApi, departmentsApi } from '../services/api';
-
-const EQUIPMENT_TYPES = [
-  'Desktop','Laptop','Server','TV Screen','Projector','Decoder',
-  'Printer','Network Device','Telephone','External Storage','Peripheral','UPS',
-];
+import { deploymentsApi, usersApi, equipmentApi, categoriesApi, regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi, stationsApi, unitsApi, officesApi, directoratesApi, departmentsApi } from '../services/api';
 
 // ─── Amazon-style Equipment Combobox ──────────────────────────────────────────
 
@@ -17,11 +12,11 @@ function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
   // Selected item label
   const selected = allEquipment.find(e => e.id === value);
   const display  = selected
-    ? `${selected.name || selected.equipment_type} — ${selected.serial_number || selected.marking_code || ''}`
+    ? `${selected.name || selected.equipment_type_name} — ${selected.serial_number || selected.marking_code || ''}`
     : '';
 
   // Apply type pre-filter then text search
-  const base     = typeFilter ? allEquipment.filter(e => e.equipment_type === typeFilter) : allEquipment;
+  const base     = typeFilter ? allEquipment.filter(e => e.equipment_type_name === typeFilter) : allEquipment;
   const filtered = query.trim() === ''
     ? base
     : base.filter(e => {
@@ -29,7 +24,7 @@ function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
         return (e.serial_number  || '').toLowerCase().includes(q)
             || (e.marking_code   || '').toLowerCase().includes(q)
             || (e.name           || '').toLowerCase().includes(q)
-            || (e.equipment_type || '').toLowerCase().includes(q);
+            || (e.equipment_type_name || '').toLowerCase().includes(q);
       });
 
   // Close on outside click
@@ -81,10 +76,10 @@ function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
             <li key={e.id}
               className="px-4 py-2.5 text-sm cursor-pointer hover:bg-[#003580]/5 flex items-center justify-between gap-2"
               onMouseDown={() => select(e)}>
-              <span className="font-medium text-slate-700">{e.name || e.equipment_type}</span>
+              <span className="font-medium text-slate-700">{e.name || e.equipment_type_name}</span>
               <span className="text-xs text-slate-400 font-mono shrink-0">
                 {[e.serial_number, e.marking_code].filter(Boolean).join(' / ')}
-                {e.equipment_type && ` · ${e.equipment_type}`}
+                {e.equipment_type_name && ` · ${e.equipment_type_name}`}
               </span>
             </li>
           ))}
@@ -162,6 +157,7 @@ export default function Deployments() {
   // Reference data
   const [users, setUsers]                 = useState([]);
   const [equipment, setEquipment]         = useState([]);
+  const [categories, setCategories]       = useState([]);
   const [regionOffices, setRegionOffices] = useState([]);
   const [regions, setRegions]             = useState([]);
   const [dpuOffices, setDpuOffices]       = useState([]);
@@ -180,6 +176,7 @@ export default function Deployments() {
     const p = { page_size: 500 };
     usersApi.list(p).then(d => setUsers(d.results || [])).catch(() => {});
     equipmentApi.list(p).then(d => setEquipment(d.results || [])).catch(() => {});
+    categoriesApi.list(p).then(d => setCategories(d.results || [])).catch(() => {});
     regionOfficesApi.list(p).then(d => setRegionOffices(d.results || [])).catch(() => {});
     regionsApi.list(p).then(d => setRegions(d.results || [])).catch(() => {});
     dpuOfficesApi.list(p).then(d => setDpuOffices(d.results || [])).catch(() => {});
@@ -195,8 +192,8 @@ export default function Deployments() {
     setLoading(true);
     try {
       const params = { page, page_size: pageSize };
-      if (tableSearch) params.search                       = tableSearch;
-      if (tableType)   params.equipment__equipment_type    = tableType;
+      if (tableSearch) params.search                              = tableSearch;
+      if (tableType)   params['equipment__equipment_type__name']  = tableType;  // FK name filter
       const d = await deploymentsApi.list(params);
       setItems(d.results || []);
       setTotal(d.count || 0);
@@ -290,7 +287,7 @@ export default function Deployments() {
             onChange={e => setTableType(e.target.value)}
           >
             <option value="">All Types</option>
-            {EQUIPMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
         </div>
 
@@ -372,7 +369,7 @@ export default function Deployments() {
               <select className={inputCls} value={eqTypeFilter}
                 onChange={e => { setEqTypeFilter(e.target.value); setForm(f => ({ ...f, equipment: null })); }}>
                 <option value="">— All Types —</option>
-                {EQUIPMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </F>
 

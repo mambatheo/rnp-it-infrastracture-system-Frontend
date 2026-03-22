@@ -1,6 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useCallback } from 'react';
 import { ROLES } from './config/permissions';
 import ProtectedRoute from './components/ProtectedRoute';
+import useIdleTimeout from './hooks/useIdleTimeout';
 
 // Pages
 import Dashboard   from './pages/Dashboard';
@@ -8,6 +10,7 @@ import Users       from './pages/Users';
 import Equipment   from './pages/Equipment';
 import EquipmentDetail from './pages/EquipmentDetail';
 import MyEquipment from './pages/MyEquipment';
+import MyEquipmentList from './pages/MyEquipmentList';
 import Deployments from './pages/Deployments';
 import Stock       from './pages/Stock';
 import Maintenance from './pages/Maintenance';
@@ -18,7 +21,19 @@ import Login           from './pages/Login';
 import ChangePassword  from './pages/ChangePassword';
 import Unauthorized    from './pages/Unauthorized';
 
-export default function App() {
+// Inner component — must be inside Router so useNavigate works
+function AppShell() {
+  const navigate = useNavigate();
+
+  const handleIdleLogout = useCallback(() => {
+    localStorage.clear();
+    navigate('/login', { replace: true });
+  }, [navigate]);
+
+  // Runs only when user is logged in; auto-logs out after 15 min of inactivity
+  const isLoggedIn = !!localStorage.getItem('access_token');
+  useIdleTimeout(isLoggedIn ? { onLogout: handleIdleLogout } : { onLogout: null });
+
   return (
     <Routes>
       {/* Public */}
@@ -87,6 +102,11 @@ export default function App() {
           <MyEquipment />
         </ProtectedRoute>
       } />
+      <Route path="/my-equipment/list" element={
+        <ProtectedRoute roles={[ROLES.TECHNICIAN, ROLES.USER]}>
+          <MyEquipmentList />
+        </ProtectedRoute>
+      } />
 
       {/* User only */}
       <Route path="/my-requests/*" element={
@@ -99,3 +119,7 @@ export default function App() {
     </Routes>
   );
 }
+
+export default function App() {
+  return <AppShell />;
+}

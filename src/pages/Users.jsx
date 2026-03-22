@@ -265,12 +265,12 @@ export default function Users() {
 
   // ── Create ─────────────────────────────────────────────────────────────────
   const handleCreate = async () => {
-    const dpuId    = form.dpu    ? parseInt(form.dpu,    10) : null;
-    const regionId = form.region ? parseInt(form.region, 10) : null;
-    const unitId   = form.unit   ? parseInt(form.unit,   10) : null;
+    const dpuId    = form.dpu?.trim()    || null;
+    const regionId = form.region?.trim() || null;
+    const unitId   = form.unit?.trim()   || null;
 
-    // Guard: at least one must be a valid positive integer
-    const hasLocation = [dpuId, regionId, unitId].some(id => id && !isNaN(id));
+    // Guard: at least one UUID location must be selected
+    const hasLocation = [dpuId, regionId, unitId].some(Boolean);
     if (!hasLocation) {
       setFormErrors({ non_field_errors: 'At least one of DPU, Region, or Unit must be assigned to the user.' });
       return;
@@ -314,10 +314,10 @@ export default function Users() {
         phone_number: form.phone_number || undefined,
         role:         form.role,
         is_active:    form.is_active === 'true' || form.is_active === true,
-        // send null to clear, or the pk to set
-        dpu:    form.dpu    ? Number(form.dpu)    : null,
-        region: form.region ? Number(form.region) : null,
-        unit:   form.unit   ? Number(form.unit)   : null,
+        // send null to clear, or the UUID pk to set
+        dpu:    form.dpu?.trim()    || null,
+        region: form.region?.trim() || null,
+        unit:   form.unit?.trim()   || null,
       };
       await usersApi.update(selected.id, payload);
       showToast('User updated');

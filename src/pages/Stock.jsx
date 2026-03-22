@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import {
-  stockApi, equipmentApi, deploymentsApi, usersApi,
+  stockApi, equipmentApi, deploymentsApi,
   regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi,
   stationsApi, unitsApi, directoratesApi, departmentsApi, officesApi,
 } from '../services/api';
@@ -66,7 +66,6 @@ export default function Stock() {
   const [deleteId, setDeleteId] = useState(null);
   const [toast, setToast]       = useState({ msg: '', type: 'success' });
   const [equipment, setEquipment] = useState([]);
-  const [users, setUsers]         = useState([]);   // ← added
 
   // Deploy state
   const [deployItem,       setDeployItem]       = useState(null);
@@ -92,7 +91,6 @@ export default function Stock() {
     const p = { page_size: 500 };
 
     equipmentApi.list(p).then(d => setEquipment(d.results || [])).catch(() => {});
-    usersApi.list(p).then(d => setUsers(d.results || [])).catch(() => {});  // ← added
 
     Promise.allSettled([
       regionOfficesApi.list(p), regionsApi.list(p),
@@ -217,7 +215,6 @@ export default function Stock() {
         issued_to_department:    deployForm.issued_to_department    || null,
         issued_to_office:        deployForm.issued_to_office        || null,
         issued_date:             deployForm.issued_date             || new Date().toISOString().split('T')[0],
-        issued_by:               deployForm.issued_by               || null,  // ← added to payload
         comments:                deployForm.comments                || null,
       };
       await deploymentsApi.create(payload);
@@ -366,21 +363,7 @@ export default function Stock() {
                 This will issue <strong>{deployItem.equipment_name}</strong> ({deployItem.equipment_serial || '—'}) and remove it from stock.
               </div>
 
-              {/* ── IT Staff (Issuer) ─────────────────────────────── */}
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide border-t pt-3">
-                IT Staff (Issuer)
-              </p>
-              <F label="Issued By *">
-                <select className={inputCls} name="issued_by"
-                  value={deployForm.issued_by || ''} onChange={onChange}>
-                  <option value="">— Select Staff —</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.first_name} {u.last_name} ({u.email})
-                    </option>
-                  ))}
-                </select>
-              </F>
+
 
               {/* ── Individual Receiver ──────────────────────────── */}
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide border-t pt-3">
