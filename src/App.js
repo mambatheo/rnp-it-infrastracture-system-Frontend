@@ -13,6 +13,7 @@ import EquipmentDetail from './pages/EquipmentDetail';
 import MyEquipment from './pages/MyEquipment';
 import MyEquipmentList from './pages/MyEquipmentList';
 import Deployments from './pages/Deployments';
+import Lendings    from './pages/Lendings';
 import Stock       from './pages/Stock';
 import Maintenance from './pages/Maintenance';
 import MyRequests  from './pages/MyRequests';
@@ -90,6 +91,11 @@ function AppShell() {
       <Route path="/deployments/*" element={
         <ProtectedRoute roles={[ROLES.ADMIN, ROLES.IT_STAFF]}>
           <Deployments />
+        </ProtectedRoute>
+      } />
+      <Route path="/lendings/*" element={
+        <ProtectedRoute roles={[ROLES.ADMIN, ROLES.IT_STAFF]}>
+          <Lendings />
         </ProtectedRoute>
       } />
       <Route path="/reports/*" element={

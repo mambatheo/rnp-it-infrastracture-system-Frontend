@@ -279,6 +279,16 @@ export const deploymentsApi = {
   delete:   (id)    => del(`/equipment/deployments/${id}/`),
 };
 
+// ─── Lendings ─────────────────────────────────────────────────────────────────
+export const lendingsApi = {
+  list:     (p)     => get('/equipment/lendings/', p),
+  retrieve: (id)    => get(`/equipment/lendings/${id}/`),
+  create:   (data)  => post('/equipment/lendings/', data),
+  update:   (id, d) => put(`/equipment/lendings/${id}/`, d),
+  patch:    (id, d) => patch(`/equipment/lendings/${id}/`, d),
+  delete:   (id)    => del(`/equipment/lendings/${id}/`),
+};
+
 // ─── Maintenance ──────────────────────────────────────────────────────────────
 export const maintenanceApi = {
   requests: {

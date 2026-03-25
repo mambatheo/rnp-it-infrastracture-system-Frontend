@@ -38,6 +38,12 @@ export const ROUTES = [
     roles: [ROLES.ADMIN, ROLES.IT_STAFF],
   },
   {
+    path: '/lendings',
+    label: 'Lendings',
+    icon: 'HandCoins',
+    roles: [ROLES.ADMIN, ROLES.IT_STAFF],
+  },
+  {
     path: '/maintenance',
     label: 'Maintenance',
     icon: 'Wrench',
