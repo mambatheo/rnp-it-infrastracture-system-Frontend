@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { ROLES } from './config/permissions';
 import ProtectedRoute from './components/ProtectedRoute';
 import useIdleTimeout from './hooks/useIdleTimeout';
+import useTokenRefresh from './hooks/useTokenRefresh';
 
 // Pages
 import Dashboard   from './pages/Dashboard';
@@ -24,15 +25,23 @@ import Unauthorized    from './pages/Unauthorized';
 // Inner component — must be inside Router so useNavigate works
 function AppShell() {
   const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem('access_token');
 
-  const handleIdleLogout = useCallback(() => {
+  // Handle logout (used by both idle timeout and token refresh failure)
+  const handleLogout = useCallback(() => {
     localStorage.clear();
     navigate('/login', { replace: true });
   }, [navigate]);
 
-  // Runs only when user is logged in; auto-logs out after 15 min of inactivity
-  const isLoggedIn = !!localStorage.getItem('access_token');
-  useIdleTimeout(isLoggedIn ? { onLogout: handleIdleLogout } : { onLogout: null });
+  // Proactive token refresh — keeps the session alive in the background
+  // Refreshes tokens every 13 minutes (2 min before 15-min expiry)
+  useTokenRefresh({
+    enabled: isLoggedIn,
+    onRefreshFailed: handleLogout,
+  });
+
+  // Auto-logout after 15 min of inactivity (no mouse/keyboard activity)
+  useIdleTimeout(isLoggedIn ? { onLogout: handleLogout } : { onLogout: null });
 
   return (
     <Routes>
@@ -122,4 +131,4 @@ function AppShell() {
 
 export default function App() {
   return <AppShell />;
-}
+}

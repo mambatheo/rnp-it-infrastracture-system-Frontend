@@ -200,10 +200,18 @@ export default function Stock() {
       return;
     }
 
+    // Get current logged-in user ID
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!currentUser?.id) {
+      showToast('Unable to identify current user. Please log in again.', 'error');
+      return;
+    }
+
     setDeploySubmitting(true);
     try {
       const payload = {
         equipment:               deployItem.equipment,
+        issued_by:               currentUser.id,  // Auto-assign to logged-in user
         issued_to_user:          deployForm.issued_to_user          || null,
         issued_to_region_office: deployForm.issued_to_region_office || null,
         issued_to_region:        deployForm.issued_to_region        || null,

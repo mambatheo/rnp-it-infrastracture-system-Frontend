@@ -109,7 +109,7 @@ function SectionHead({ label }) {
 }
 
 function EquipmentForm({ form, onChange, refs }) {
-  const { brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, users, categories } = refs;
+  const { brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, categories } = refs;
   const eqType = form.equipment_type_name || form.equipment_type || '';
   const intent = form.registration_intent;
 
@@ -463,8 +463,31 @@ export default function Equipment() {
       }
       delete payload.equipment_type_name;
 
+      // For Deployment intent: map issued_to_* fields to Equipment's location fields
+      // The Equipment model stores the current location; issued_to_* is for Deployment records
+      if (payload.registration_intent === 'Deployment') {
+        // Map issued_to_* → Equipment location fields
+        const locationMap = {
+          issued_to_region: 'region',
+          issued_to_dpu: 'dpu',
+          issued_to_station: 'station',
+          issued_to_unit: 'unit',
+          issued_to_directorate: 'directorate',
+          issued_to_department: 'department',
+          issued_to_office: 'office',
+        };
+        Object.entries(locationMap).forEach(([from, to]) => {
+          if (payload[from]) {
+            payload[to] = payload[from];
+          }
+        });
+      }
+
       // Nullify empty FK strings
-      ['brand', 'status', 'region', 'dpu', 'station', 'unit', 'directorate', 'department', 'office'].forEach(k => {
+      ['brand', 'status', 'region', 'dpu', 'station', 'unit', 'directorate', 'department', 'office',
+       'issued_to_region_office', 'issued_to_region', 'issued_to_dpu_office', 'issued_to_dpu',
+       'issued_to_station', 'issued_to_unit', 'issued_to_directorate', 'issued_to_department', 'issued_to_office'
+      ].forEach(k => {
         if (payload[k] === '' || payload[k] === undefined) payload[k] = null;
       });
 

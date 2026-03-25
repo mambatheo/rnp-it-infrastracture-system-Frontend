@@ -1,9 +1,16 @@
 const BASE = (process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000') + '/api/v1';
 
+// Token refresh interval: refresh 2 minutes before expiry (access token is 15 min)
+const TOKEN_REFRESH_INTERVAL_MS = 13 * 60 * 1000; // 13 minutes
 
 let _refreshing = null; // prevent concurrent refresh races
 
-async function refreshTokens() {
+/**
+ * Refresh access token using the refresh token.
+ * Returns true if successful, false otherwise.
+ * Exported so it can be used by the proactive refresh hook.
+ */
+export async function refreshTokens() {
   const refresh = localStorage.getItem('refresh_token');
   if (!refresh) return false;
   try {
@@ -18,6 +25,14 @@ async function refreshTokens() {
     if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
     return true;
   } catch { return false; }
+}
+
+/**
+ * Get the token refresh interval in milliseconds.
+ * Exported for use by the proactive refresh hook.
+ */
+export function getTokenRefreshInterval() {
+  return TOKEN_REFRESH_INTERVAL_MS;
 }
 
 async function request(method, path, body, _retry = false) {
