@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { lendingsApi, equipmentApi, categoriesApi } from '../services/api';
 import { regionsApi, dpusApi, stationsApi, unitsApi } from '../services/api';
-import { useAuth } from '../hooks/useAuth'; // ← adjust if your file is elsewhere
+import { useAuth } from '../hooks/useAuth'; 
 
 // ─── Equipment Combobox ────────────────────────────────────────────────────────
 function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
@@ -54,7 +54,7 @@ function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
         )}
       </div>
       {value && !open && (
-        <p className="mt-1 text-xs text-blue-600 font-medium truncate px-1">✔ {display}</p>
+        <p className="mt-1 text-xs text-blue-600 font-medium truncate px-1"> {display}</p>
       )}
       {open && (
         <ul className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-56 overflow-y-auto">

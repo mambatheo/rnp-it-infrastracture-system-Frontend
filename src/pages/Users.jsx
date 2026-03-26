@@ -18,6 +18,8 @@ const emptyForm = {
   password: '', password_confirm: '',
 };
 
+const emptyResetForm = { new_password: '', confirm_password: '' };
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
   return (
@@ -192,6 +194,12 @@ export default function Users() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
 
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetUser, setResetUser] = useState(null);
+  const [resetForm, setResetForm] = useState(emptyResetForm);
+  const [resetErrors, setResetErrors] = useState({});
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+
   const [toast, setToast]         = useState({ msg: '', type: 'success' });
 
   const pageSize = 15;
@@ -243,6 +251,12 @@ export default function Users() {
     setFormErrors(fe => ({ ...fe, [name]: undefined, non_field_errors: undefined }));
   };
 
+  const handleResetChange = (e) => {
+    const { name, value } = e.target;
+    setResetForm(f => ({ ...f, [name]: value }));
+    setResetErrors(errs => ({ ...errs, [name]: undefined, non_field_errors: undefined }));
+  };
+
   const openCreate = () => {
     setForm(emptyForm);
     setFormErrors({});
@@ -261,6 +275,13 @@ export default function Users() {
     setFormErrors({});
     setSelected(user);
     setModal('edit');
+  };
+
+  const openResetPassword = (user) => {
+    setResetUser(user);
+    setResetForm(emptyResetForm);
+    setResetErrors({});
+    setResetModalOpen(true);
   };
 
   // ── Create ─────────────────────────────────────────────────────────────────
@@ -367,6 +388,28 @@ export default function Users() {
     });
   };
 
+  // ── Reset Password (Admin) ─────────────────────────────────────────────────
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    setResetSubmitting(true);
+    try {
+      await usersApi.resetPw(resetUser.id, {
+        new_password: resetForm.new_password,
+        confirm_password: resetForm.confirm_password,
+      });
+      showToast('Password reset. User must change it on next login.');
+      setResetModalOpen(false);
+      setResetUser(null);
+      setResetForm(emptyResetForm);
+      fetchUsers();
+    } catch (err) {
+      if (err && typeof err === 'object') setResetErrors(err);
+      else showToast('Failed to reset password', 'error');
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -448,6 +491,10 @@ export default function Users() {
                           className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors">
                           Edit
                         </button>
+                        <button onClick={() => openResetPassword(u)}
+                          className="px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-medium transition-colors">
+                          Reset Password
+                        </button>
                         <button onClick={() => handleToggleActive(u)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                             ${u.is_active ? 'bg-orange-100 hover:bg-orange-200 text-orange-700' : 'bg-green-100 hover:bg-green-200 text-green-700'}`}>
@@ -513,6 +560,51 @@ export default function Users() {
           onConfirm={confirmAction.onConfirm}
           onCancel={() => setConfirmAction(null)}
         />
+      )}
+
+      {resetModalOpen && resetUser && (
+        <Modal title={`Reset Password — ${resetUser.first_name} ${resetUser.last_name}`} onClose={() => setResetModalOpen(false)}>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Set a new password for this user. They’ll be forced to change it after logging in.
+            </p>
+            <Field label="New Password" required>
+              <input
+                className={inputCls}
+                type="password"
+                name="new_password"
+                value={resetForm.new_password}
+                onChange={handleResetChange}
+              />
+              {resetErrors.new_password && <p className="text-xs text-red-500 mt-1">{resetErrors.new_password}</p>}
+            </Field>
+            <Field label="Confirm Password" required>
+              <input
+                className={inputCls}
+                type="password"
+                name="confirm_password"
+                value={resetForm.confirm_password}
+                onChange={handleResetChange}
+              />
+              {resetErrors.confirm_password && <p className="text-xs text-red-500 mt-1">{resetErrors.confirm_password}</p>}
+            </Field>
+            {resetErrors.non_field_errors && (
+              <p className="text-xs text-red-500">
+                {Array.isArray(resetErrors.non_field_errors) ? resetErrors.non_field_errors[0] : resetErrors.non_field_errors}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <button onClick={() => setResetModalOpen(false)} className="px-4 py-2 rounded-lg border text-sm">Cancel</button>
+            <button
+              onClick={handleResetPassword}
+              disabled={resetSubmitting}
+              className="px-4 py-2 rounded-lg bg-[#003580] text-white text-sm hover:bg-[#002060] disabled:opacity-50"
+            >
+              {resetSubmitting ? 'Resetting…' : 'Reset Password'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       <Toast msg={toast.msg} type={toast.type} />
