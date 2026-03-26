@@ -99,7 +99,7 @@ function UserForm({ form, onChange, isEdit = false, errors = {}, dpus, regions, 
         {/* Warn when no location data has been seeded yet */}
         {dpus.length === 0 && regions.length === 0 && units.length === 0 && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            ⚠️ No locations available yet. Go to <strong>Settings</strong> to create DPUs, Regions, or Units first.
+            No locations available yet. Go to <strong>Settings</strong> to create DPUs, Regions, or Units first.
           </p>
         )}
 

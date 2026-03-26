@@ -257,8 +257,8 @@ function EquipmentForm({ form, onChange, refs }) {
           </F>
         </div>
 
-        {/* Territorial Location */}
-        <SectionHead label="Territorial Location" />
+        {/* Territorial Units */}
+        <SectionHead label="Territorial Units" />
         <div className="col-span-2">
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
             Fill at least one location field or the person name above.
@@ -267,31 +267,31 @@ function EquipmentForm({ form, onChange, refs }) {
 
         <F label="Region Office (HQ)">
           <select className={inputCls} name="issued_to_region_office" value={form.issued_to_region_office || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {regionOffices.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </F>
         <F label="Region">
           <select className={inputCls} name="issued_to_region" value={form.issued_to_region || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </F>
         <F label="DPU Office (HQ)">
           <select className={inputCls} name="issued_to_dpu_office" value={form.issued_to_dpu_office || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {dpuOffices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="DPU">
           <select className={inputCls} name="issued_to_dpu" value={form.issued_to_dpu || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {dpus.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="Station">
           <select className={inputCls} name="issued_to_station" value={form.issued_to_station || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </F>
@@ -300,25 +300,25 @@ function EquipmentForm({ form, onChange, refs }) {
         <SectionHead label="Units & Departments" />
         <F label="Unit">
           <select className={inputCls} name="issued_to_unit" value={form.issued_to_unit || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </F>
         <F label="Directorate">
           <select className={inputCls} name="issued_to_directorate" value={form.issued_to_directorate || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {directorates.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="Department">
           <select className={inputCls} name="issued_to_department" value={form.issued_to_department || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="Office">
           <select className={inputCls} name="issued_to_office" value={form.issued_to_office || ''} onChange={onChange}>
-            <option value="">— None —</option>
+            <option value="">None </option>
             {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
         </F>
