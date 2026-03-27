@@ -68,6 +68,24 @@ async function request(method, path, body, _retry = false) {
   return data;
 }
 
+async function fetchWithAuthRetry(url, options = {}, _retry = false) {
+  const token = localStorage.getItem('access_token');
+  const headers = {
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401 && !_retry) {
+    if (!_refreshing) _refreshing = refreshTokens().finally(() => { _refreshing = null; });
+    const ok = await _refreshing;
+    if (ok) return fetchWithAuthRetry(url, options, true);
+  }
+
+  return res;
+}
+
 const get    = (path, params) => request('GET',    path + (params ? '?' + new URLSearchParams(params) : ''));
 const post   = (path, body)   => request('POST',   path, body);
 const put    = (path, body)   => request('PUT',    path, body);
@@ -81,15 +99,11 @@ const del    = (path)         => request('DELETE', path);
 // 3. Streams the blob and triggers a browser download
 // Throws on network error or task FAILURE so callers can show error UI.
 async function downloadReport(path, filename) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type':  'application/json',
-  };
+  const headers = { 'Content-Type': 'application/json' };
   const fullUrl = `${BASE}${path}`;
 
   // Step 1 — enqueue
-  const enqueueRes = await fetch(fullUrl, { headers });
+  const enqueueRes = await fetchWithAuthRetry(fullUrl, { headers });
   if (!enqueueRes.ok) {
     throw new Error(`Failed to start report (HTTP ${enqueueRes.status}).`);
   }
@@ -103,7 +117,7 @@ async function downloadReport(path, filename) {
   while (true) {
     await new Promise((r) => setTimeout(r, 2000));
 
-    const pollRes = await fetch(pollUrl, { headers });
+    const pollRes = await fetchWithAuthRetry(pollUrl, { headers });
 
     if (pollRes.status === 202) continue; // still processing
 
