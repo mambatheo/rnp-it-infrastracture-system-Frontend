@@ -14,6 +14,12 @@ export const ROUTES = [
     roles: [ROLES.ADMIN],
   },
   {
+    path: '/slideshow',
+    label: 'SlideShow',
+    icon: 'Images',
+    roles: [ROLES.ADMIN],
+  },
+  {
     path: '/equipment',
     label: 'Equipment',
     icon: 'Monitor',

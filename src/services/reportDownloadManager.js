@@ -21,7 +21,7 @@ const FAILED   = 'failed';
 
 class ReportDownloadManager {
   constructor() {
-    /** @type {Map<string, {key, label, status, error}>} */
+    /** @type {Map<string, {key, label, status, error, progress?: number}>} */
     this._queue     = new Map();
     this._listeners = new Set();
   }
@@ -49,13 +49,14 @@ class ReportDownloadManager {
       return;
     }
 
-    this._queue.set(key, { key, label, status: ACTIVE, error: null });
+    this._queue.set(key, { key, label, status: ACTIVE, error: null, progress: 0 });
     this._notify();
 
     apiFn()
       .then(() => {
         if (!this._queue.has(key)) return;
-        this._queue.set(key, { key, label, status: DONE, error: null });
+        const prev = this._queue.get(key) || { key, label };
+        this._queue.set(key, { ...prev, status: DONE, error: null, progress: 100 });
         this._notify();
         // Auto-remove after 4 s so the toast disappears
         setTimeout(() => {
@@ -65,8 +66,10 @@ class ReportDownloadManager {
       })
       .catch((err) => {
         if (!this._queue.has(key)) return;
+        const prev = this._queue.get(key) || { key, label };
         this._queue.set(key, {
-          key, label, status: FAILED,
+          ...prev,
+          status: FAILED,
           error: err?.message || String(err) || 'Download failed.',
         });
         this._notify();
@@ -81,6 +84,23 @@ class ReportDownloadManager {
   /** Returns true if any download is currently active */
   isActive(key) {
     return this._queue.has(key) && this._queue.get(key).status === ACTIVE;
+  }
+
+  /** Get current progress (0–100) for given key, or null */
+  getProgress(key) {
+    const item = this._queue.get(key);
+    if (!item || typeof item.progress !== 'number') return null;
+    return item.progress;
+  }
+
+  /** Update progress (0–100) for an active download */
+  setProgress(key, progress) {
+    if (!this._queue.has(key)) return;
+    const clamped = Math.max(0, Math.min(100, progress | 0));
+    const prev = this._queue.get(key);
+    if (prev.progress === clamped) return;
+    this._queue.set(key, { ...prev, progress: clamped });
+    this._notify();
   }
 
   dismiss(key) {

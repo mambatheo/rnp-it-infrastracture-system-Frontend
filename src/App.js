@@ -19,6 +19,7 @@ import Maintenance from './pages/Maintenance';
 import MyRequests  from './pages/MyRequests';
 import Reports     from './pages/Reports';
 import Settings    from './pages/Settings';
+import Slideshow   from './pages/Slideshow';
 import Login           from './pages/Login';
 import ChangePassword  from './pages/ChangePassword';
 import Unauthorized    from './pages/Unauthorized';
@@ -69,6 +70,11 @@ function AppShell() {
       <Route path="/settings" element={
         <ProtectedRoute roles={[ROLES.ADMIN]}>
           <Settings />
+        </ProtectedRoute>
+      } />
+      <Route path="/slideshow" element={
+        <ProtectedRoute roles={[ROLES.ADMIN]}>
+          <Slideshow />
         </ProtectedRoute>
       } />
 

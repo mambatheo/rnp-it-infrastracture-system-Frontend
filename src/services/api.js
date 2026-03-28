@@ -5,6 +5,48 @@ const TOKEN_REFRESH_INTERVAL_MS = 13 * 60 * 1000; // 13 minutes
 
 let _refreshing = null; // prevent concurrent refresh races
 
+const REPORT_DOWNLOAD_JOBS_STORAGE_KEY = 'itinfra_report_download_jobs_v1';
+
+function getClientSessionId() {
+  const existing = sessionStorage.getItem('itinfra_report_download_client_session_id');
+  if (existing) return existing;
+  const id = `s_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+  sessionStorage.setItem('itinfra_report_download_client_session_id', id);
+  return id;
+}
+
+function readReportJobs() {
+  try {
+    const raw = localStorage.getItem(REPORT_DOWNLOAD_JOBS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function writeReportJobs(jobsObj) {
+  try {
+    localStorage.setItem(REPORT_DOWNLOAD_JOBS_STORAGE_KEY, JSON.stringify(jobsObj));
+  } catch {
+    // Ignore storage write failures (quota / disabled storage)
+  }
+}
+
+function saveReportJob(job) {
+  const jobs = readReportJobs();
+  jobs[job.task_id] = job;
+  writeReportJobs(jobs);
+}
+
+function deleteReportJob(task_id) {
+  const jobs = readReportJobs();
+  if (jobs[task_id]) delete jobs[task_id];
+  writeReportJobs(jobs);
+}
+
 /**
  * Refresh access token using the refresh token.
  * Returns true if successful, false otherwise.
@@ -50,13 +92,15 @@ async function request(method, path, body, _retry = false) {
     if (!_refreshing) _refreshing = refreshTokens().finally(() => { _refreshing = null; });
     const ok = await _refreshing;
     if (ok) return request(method, path, body, true);
-    localStorage.clear();
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     window.location.replace('/login');
     return;
   }
 
   if (res.status === 401 && _retry) {
-    localStorage.clear();
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     window.location.replace('/login');
     return;
   }
@@ -92,13 +136,44 @@ const put    = (path, body)   => request('PUT',    path, body);
 const patch  = (path, body)   => request('PATCH',  path, body);
 const del    = (path)         => request('DELETE', path);
 
+/**
+ * Authenticated fetch for paths under BASE (JSON bodies or FormData).
+ * Use _skipContentType: true for multipart uploads so the browser sets the boundary.
+ */
+async function apiFetch(path, options = {}, _retry = false) {
+  const { _skipContentType, ...opts } = options;
+  const token = localStorage.getItem('access_token');
+  const headers = { ...(opts.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (!_skipContentType && opts.body && typeof opts.body === 'string') {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
+  const url = `${BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  const res = await fetch(url, { ...opts, headers });
+
+  if (res.status === 401 && !_retry) {
+    if (!_refreshing) _refreshing = refreshTokens().finally(() => { _refreshing = null; });
+    const ok = await _refreshing;
+    if (ok) return apiFetch(path, options, true);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.replace('/login');
+    return;
+  }
+
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data;
+}
+
 
 // ─── Async report download (Celery polling) ───────────────────────────────────
-// 1. Calls the report URL → backend enqueues task, returns { task_id }
-// 2. Polls every 2 s with ?task_id=<id> until HTTP 200 (file ready)
+// 1. Calls the report URL → backend enqueues task, returns { task_id, download_token }
+// 2. Polls every 2 s with ?task_id=<id>[&dl_token=...] until HTTP 200 (file ready)
 // 3. Streams the blob and triggers a browser download
-// Throws on network error or task FAILURE so callers can show error UI.
-async function downloadReport(path, filename) {
+// onProgress(progress) is called with integer 0–100 when backend exposes it.
+async function downloadReport(path, filename, onProgress) {
   const headers = { 'Content-Type': 'application/json' };
   const fullUrl = `${BASE}${path}`;
 
@@ -107,19 +182,45 @@ async function downloadReport(path, filename) {
   if (!enqueueRes.ok) {
     throw new Error(`Failed to start report (HTTP ${enqueueRes.status}).`);
   }
-  const { task_id } = await enqueueRes.json();
+  const { task_id, download_token } = await enqueueRes.json();
   if (!task_id) throw new Error('No task_id returned from server.');
+
+  // Persist job so we can resume after reload even if access token expires.
+  // dl_token allows polling/download without JWT.
+  saveReportJob({
+    task_id,
+    dl_token: download_token,
+    path,
+    filename,
+    created_at: Date.now(),
+    client_session_id: getClientSessionId(),
+  });
 
   // Step 2 — poll
   const sep     = path.includes('?') ? '&' : '?';
-  const pollUrl = `${fullUrl}${sep}task_id=${task_id}`;
+  const pollUrl = download_token
+    ? `${fullUrl}${sep}task_id=${task_id}&dl_token=${encodeURIComponent(download_token)}`
+    : `${fullUrl}${sep}task_id=${task_id}`;
 
   while (true) {
     await new Promise((r) => setTimeout(r, 2000));
 
-    const pollRes = await fetchWithAuthRetry(pollUrl, { headers });
+    // If dl_token is present, the backend will allow download without JWT auth.
+    const pollRes = download_token
+      ? await fetch(pollUrl, { headers })
+      : await fetchWithAuthRetry(pollUrl, { headers });
 
-    if (pollRes.status === 202) continue; // still processing
+    if (pollRes.status === 202) {
+      try {
+        const body = await pollRes.json();
+        if (typeof body.progress === 'number' && typeof onProgress === 'function') {
+          onProgress(body.progress);
+        }
+      } catch (_) {
+        // ignore malformed JSON while task is pending
+      }
+      continue; // still processing
+    }
 
     if (pollRes.ok) {
       // Step 3 — trigger download
@@ -132,6 +233,7 @@ async function downloadReport(path, filename) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(objectUrl);
+      deleteReportJob(task_id);
       return; // done
     }
 
@@ -143,6 +245,68 @@ async function downloadReport(path, filename) {
     } catch (_) {}
     throw new Error(detail);
   }
+}
+
+async function resumeSingleReportJob(job) {
+  if (!job || !job.task_id || !job.dl_token || !job.path || !job.filename) return;
+
+  const fullUrl = `${BASE}${job.path}`;
+  const sep     = job.path.includes('?') ? '&' : '?';
+  const pollUrl = `${fullUrl}${sep}task_id=${job.task_id}&dl_token=${encodeURIComponent(job.dl_token)}`;
+
+  // Poll without JWT; dl_token is enough.
+  while (true) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const pollRes = await fetch(pollUrl, { method: 'GET' });
+
+    if (pollRes.status === 202) continue;
+
+    if (pollRes.ok) {
+      const blob      = await pollRes.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a         = document.createElement('a');
+      a.href          = objectUrl;
+      a.download      = job.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+      deleteReportJob(job.task_id);
+      return;
+    }
+
+    // Failure: stop trying and keep the job removed so it doesn't block future reports.
+    // If you prefer retry-on-failure, we can implement that too.
+    deleteReportJob(job.task_id);
+    return;
+  }
+}
+
+/**
+ * Resume report downloads after a page reload.
+ * Only resumes jobs created by a previous session (sessionStorage id differs).
+ */
+export async function resumeReportDownloads() {
+  const jobs = readReportJobs();
+  const clientSessionId = getClientSessionId();
+
+  const pending = Object.values(jobs).filter((job) => {
+    if (!job || !job.task_id) return false;
+    if (!job.dl_token) return false;
+    // Skip jobs that were started in the current React session (they should already be handled).
+    if (job.client_session_id === clientSessionId) return false;
+    return true;
+  });
+
+  if (!pending.length) return;
+
+  // Fire-and-forget resume polls (do not block the UI).
+  pending.forEach((job) => {
+    resumeSingleReportJob(job).catch(() => {
+      // If a resume fails, drop the job so we don't get stuck forever.
+      deleteReportJob(job.task_id);
+    });
+  });
 }
 
 const date = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -346,92 +510,167 @@ export const reportsApi = {
   counts: () => get('/equipment/reports/counts/'),
 
   // ── Equipment ──────────────────────────────────────────────────────────────
-  excelAll:    ()     => downloadReport(
+  excelAll:    (onProgress)     => downloadReport(
     '/equipment/reports/excel/',
     `equipment_report_${date()}.xlsx`,
+    onProgress,
   ),
-  pdfAll:      ()     => downloadReport(
+  pdfAll:      (onProgress)     => downloadReport(
     '/equipment/reports/pdf/',
     `equipment_report_${date()}.pdf`,
+    onProgress,
   ),
-  excelByType: (type) => downloadReport(
+  excelByType: (type, onProgress) => downloadReport(
     `/equipment/reports/excel/${encodeURIComponent(type)}/`,
     `${type.replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+    onProgress,
   ),
-  pdfByType:   (type) => downloadReport(
+  pdfByType:   (type, onProgress) => downloadReport(
     `/equipment/reports/pdf/${encodeURIComponent(type)}/`,
     `${type.replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+    onProgress,
   ),
 
   // ── Stock ──────────────────────────────────────────────────────────────────
-  stockExcelAll:    ()     => downloadReport(
+  stockExcelAll:    (onProgress)     => downloadReport(
     '/equipment/reports/stock/excel/',
     `stock_report_${date()}.xlsx`,
+    onProgress,
   ),
-  stockPdfAll:      ()     => downloadReport(
+  stockPdfAll:      (onProgress)     => downloadReport(
     '/equipment/reports/stock/pdf/',
     `stock_report_${date()}.pdf`,
+    onProgress,
   ),
-  stockExcelByType: (type) => downloadReport(
+  stockExcelByType: (type, onProgress) => downloadReport(
     `/equipment/reports/stock/excel/${encodeURIComponent(type)}/`,
     `stock_${type.replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+    onProgress,
   ),
-  stockPdfByType:   (type) => downloadReport(
+  stockPdfByType:   (type, onProgress) => downloadReport(
     `/equipment/reports/stock/pdf/${encodeURIComponent(type)}/`,
     `stock_${type.replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+    onProgress,
   ),
 
   // ── Units ──────────────────────────────────────────────────────────────────
-  unitExcelAll:  ()          => downloadReport(
+  unitExcelAll:  (onProgress)          => downloadReport(
     '/equipment/reports/unit/excel/',
     `units_all_${date()}.xlsx`,
+    onProgress,
   ),
-  unitPdfAll:    ()          => downloadReport(
+  unitPdfAll:    (onProgress)          => downloadReport(
     '/equipment/reports/unit/pdf/',
     `units_all_${date()}.pdf`,
+    onProgress,
   ),
-  unitExcelById: (id, name)  => downloadReport(
+  unitExcelById: (id, name, onProgress)  => downloadReport(
     `/equipment/reports/unit/excel/${id}/`,
     `unit_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+    onProgress,
   ),
-  unitPdfById:   (id, name)  => downloadReport(
+  unitPdfById:   (id, name, onProgress)  => downloadReport(
     `/equipment/reports/unit/pdf/${id}/`,
     `unit_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+    onProgress,
   ),
 
   // ── Regions ────────────────────────────────────────────────────────────────
-  regionExcelAll:  ()         => downloadReport(
+  regionExcelAll:  (onProgress)         => downloadReport(
     '/equipment/reports/region/excel/',
     `regions_all_${date()}.xlsx`,
+    onProgress,
   ),
-  regionPdfAll:    ()         => downloadReport(
+  regionPdfAll:    (onProgress)         => downloadReport(
     '/equipment/reports/region/pdf/',
     `regions_all_${date()}.pdf`,
+    onProgress,
   ),
-  regionExcelById: (id, name) => downloadReport(
+  regionExcelById: (id, name, onProgress) => downloadReport(
     `/equipment/reports/region/excel/${id}/`,
     `region_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+    onProgress,
   ),
-  regionPdfById:   (id, name) => downloadReport(
+  regionPdfById:   (id, name, onProgress) => downloadReport(
     `/equipment/reports/region/pdf/${id}/`,
     `region_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+    onProgress,
   ),
 
   // ── DPUs ───────────────────────────────────────────────────────────────────
-  dpuExcelAll:  ()         => downloadReport(
+  dpuExcelAll:  (onProgress)         => downloadReport(
     '/equipment/reports/dpu/excel/',
     `dpus_all_${date()}.xlsx`,
+    onProgress,
   ),
-  dpuPdfAll:    ()         => downloadReport(
+  dpuPdfAll:    (onProgress)         => downloadReport(
     '/equipment/reports/dpu/pdf/',
     `dpus_all_${date()}.pdf`,
+    onProgress,
   ),
-  dpuExcelById: (id, name) => downloadReport(
+  dpuExcelById: (id, name, onProgress) => downloadReport(
     `/equipment/reports/dpu/excel/${id}/`,
     `dpu_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+    onProgress,
   ),
-  dpuPdfById:   (id, name) => downloadReport(
+  dpuPdfById:   (id, name, onProgress) => downloadReport(
     `/equipment/reports/dpu/pdf/${id}/`,
     `dpu_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+    onProgress,
   ),
 };
+
+
+// Add these to your existing services/api.js
+
+// ── Slideshow API ──────────────────────────────────────────────────────────────
+
+/** Public — no auth token needed. Called by AuthPage. */
+export const slideshowPublicApi = {
+  list: () =>
+    fetch(`${BASE}/slideshow/public/`)
+      .then(r => r.json()),
+};
+
+/** Admin — requires Bearer token. Called by SlideshowAdmin page. */
+export const slideshowApi = {
+  list: () => apiFetch('/slideshow/'),
+
+  upload: (formData) =>
+    apiFetch('/slideshow/', {
+      method: 'POST',
+      body: formData,
+      _skipContentType: true,
+    }),
+
+  update: (id, data) =>
+    apiFetch(`/slideshow/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  delete: (id) =>
+    apiFetch(`/slideshow/${id}/`, { method: 'DELETE' }),
+};
+
+// ── NOTE ───────────────────────────────────────────────────────────────────────
+// If your apiFetch helper always sets Content-Type: application/json,
+// you'll need to handle the upload separately. Here's a standalone helper:
+
+export async function uploadSlideshowImage(file, caption = '', order = 0) {
+  const fd = new FormData();
+  fd.append('image',   file);
+  fd.append('caption', caption);
+  fd.append('order',   order);
+
+  const res = await fetch(
+    `${BASE}/slideshow/`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      body: fd,
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw err;
+  }
+  return res.json();
+}

@@ -85,6 +85,13 @@ const icons = {
       <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
     </svg>
   ),
+  /** Stacked frames — login page background slideshow */
+  Images: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+      <rect x="2" y="6" width="15" height="12" rx="1.5"/>
+      <rect x="7" y="3" width="15" height="12" rx="1.5" opacity="0.85"/>
+    </svg>
+  ),
   HandCoins: () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
       <path d="M11 15h2a2 2 0 000-4h-3c-.6 0-1.1.2-1.4.6L3 17"/>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
-import { reportsApi } from '../services/api';
+import { reportsApi, resumeReportDownloads } from '../services/api';
 import reportDownloadManager from '../services/reportDownloadManager';
 
 const ACCENT = '#003366';
@@ -17,10 +17,15 @@ function DlBtn({ label, icon, dlKey, apiFn, dlLabel, color = ACCENT }) {
     return () => reportDownloadManager.unsubscribe(handler);
   }, []);
 
-  const loading = reportDownloadManager.isActive(dlKey);
+  const loading  = reportDownloadManager.isActive(dlKey);
+  const progress = reportDownloadManager.getProgress(dlKey);
 
   const handleClick = useCallback(() => {
-    reportDownloadManager.start(dlKey, apiFn, dlLabel);
+    reportDownloadManager.start(
+      dlKey,
+      () => apiFn((pct) => reportDownloadManager.setProgress(dlKey, pct)),
+      dlLabel,
+    );
   }, [dlKey, apiFn, dlLabel]);
 
   return (
@@ -44,6 +49,9 @@ function DlBtn({ label, icon, dlKey, apiFn, dlLabel, color = ACCENT }) {
         ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
         : icon}
       {loading ? 'Queued…' : label}
+      {loading && typeof progress === 'number' && (
+        <span className="ml-1 text-[10px] text-slate-400">{progress}%</span>
+      )}
     </button>
   );
 }
@@ -71,9 +79,15 @@ function ReportCard({ label, count, total, color, excelKey, excelFn, pdfKey, pdf
       </div>
       <div className="flex gap-2 flex-wrap">
         <DlBtn icon="📊" label="Excel" color={color}
-          dlKey={excelKey} apiFn={excelFn} dlLabel={`${label} Excel`} />
+          dlKey={excelKey}
+          apiFn={(onProgress) => excelFn(onProgress)}
+          dlLabel={`${label} Excel`}
+        />
         <DlBtn icon="📄" label="PDF"   color={color}
-          dlKey={pdfKey}   apiFn={pdfFn}   dlLabel={`${label} PDF`} />
+          dlKey={pdfKey}
+          apiFn={(onProgress) => pdfFn(onProgress)}
+          dlLabel={`${label} PDF`}
+        />
       </div>
     </div>
   );
@@ -97,6 +111,8 @@ function Section({
 
   const excelBusy = reportDownloadManager.isActive(allExcelKey);
   const pdfBusy   = reportDownloadManager.isActive(allPdfKey);
+  const excelPct  = reportDownloadManager.getProgress(allExcelKey);
+  const pdfPct    = reportDownloadManager.getProgress(allPdfKey);
 
   return (
     <div className="mb-10">
@@ -112,7 +128,11 @@ function Section({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-white text-xs opacity-70 font-medium">Full {title} Report:</span>
           <button
-            onClick={() => reportDownloadManager.start(allExcelKey, allExcelFn, `${title} Excel (All)`)}
+            onClick={() => reportDownloadManager.start(
+              allExcelKey,
+              () => allExcelFn((pct) => reportDownloadManager.setProgress(allExcelKey, pct)),
+              `${title} Excel (All)`,
+            )}
             disabled={excelBusy}
             className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
           >
@@ -120,9 +140,16 @@ function Section({
               ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : '📊'}
             {excelBusy ? 'Queued…' : 'Excel'}
+            {excelBusy && typeof excelPct === 'number' && (
+              <span className="ml-1 text-[10px] text-white/80">{excelPct}%</span>
+            )}
           </button>
           <button
-            onClick={() => reportDownloadManager.start(allPdfKey, allPdfFn, `${title} PDF (All)`)}
+            onClick={() => reportDownloadManager.start(
+              allPdfKey,
+              () => allPdfFn((pct) => reportDownloadManager.setProgress(allPdfKey, pct)),
+              `${title} PDF (All)`,
+            )}
             disabled={pdfBusy}
             className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
           >
@@ -130,6 +157,9 @@ function Section({
               ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : '📄'}
             {pdfBusy ? 'Queued…' : 'PDF'}
+            {pdfBusy && typeof pdfPct === 'number' && (
+              <span className="ml-1 text-[10px] text-white/80">{pdfPct}%</span>
+            )}
           </button>
         </div>
       </div>
@@ -157,6 +187,9 @@ export default function Reports() {
   const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
+    // Resume any unfinished report downloads after reload.
+    resumeReportDownloads().catch((e) => console.error(e));
+
     reportsApi.counts()
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => { setFetchError('Failed to load report data.'); setLoading(false); });
