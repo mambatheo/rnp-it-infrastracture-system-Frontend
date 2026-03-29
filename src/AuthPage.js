@@ -1,7 +1,8 @@
-// src/AuthPage.jsx  — now fetches slideshow images from the backend API
+// src/AuthPage.jsx
 
 import { useState, useEffect } from "react";
 import { authApi } from './services/api';
+import BackgroundSlideshow from './components/BackgroundSlideshow';
 
 const BASE = (process.env.REACT_APP_API_URL ||
   'https://historical-clair-it-infrastracture-system-e80431e7.koyeb.app') + '/api/v1';
@@ -50,76 +51,6 @@ const MailIcon = () => (
   </svg>
 );
 
-// ─── Background Slideshow ─────────────────────────────
-function BackgroundSlideshow({ slides }) {
-  const [current, setCurrent] = useState(0);
-  const [fade, setFade]       = useState(true);
-
-  // Reset index when slides change (e.g. on first load)
-  useEffect(() => { setCurrent(0); setFade(true); }, [slides.length]);
-
-  useEffect(() => {
-    if (slides.length < 2) return;
-    const iv = setInterval(() => {
-      setFade(false);
-      setTimeout(() => { setCurrent(p => (p + 1) % slides.length); setFade(true); }, 600);
-    }, 5000);
-    return () => clearInterval(iv);
-  }, [slides.length]);
-
-  return (
-    <>
-      {/* Base dark navy */}
-      <div className="absolute inset-0 bg-[#001433] z-0" />
-
-      {/* Slides — each slide = one API image */}
-      {slides.map((slide, i) => (
-        <div
-          key={slide.id}
-          className="absolute inset-0 bg-cover bg-center z-[1] transition-opacity duration-700"
-          style={{
-            backgroundImage: `url(${slide.image_url})`,
-            opacity: i === current ? (fade ? 0.28 : 0) : 0,
-          }}
-        />
-      ))}
-
-      {/* Blue radial overlays */}
-      <div className="absolute inset-0 z-[2]" style={{
-        backgroundImage: `
-          radial-gradient(circle at 20% 50%, rgba(0,53,128,0.55) 0%, transparent 60%),
-          radial-gradient(circle at 80% 20%, rgba(0,32,96,0.45) 0%, transparent 50%),
-          radial-gradient(circle at 60% 80%, rgba(0,20,51,0.6) 0%, transparent 55%)
-        `
-      }} />
-
-      {/* Dot grid texture */}
-      <div className="absolute inset-0 z-[3] opacity-[0.04]" style={{
-        backgroundImage: `
-          linear-gradient(rgba(255,255,255,1) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)
-        `,
-        backgroundSize: '60px 60px',
-      }} />
-
-      {/* Slide dots — only show if more than 1 slide */}
-      {slides.length > 1 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-[10]">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => { setCurrent(i); setFade(true); }}
-              className={`rounded-full transition-all duration-300 ${
-                i === current ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/30 hover:bg-white/50'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
 // ─── Main Component ──────────────────────────────────
 export default function AuthPage() {
   const [form, setForm]               = useState({ email: "", password: "" });
@@ -128,16 +59,13 @@ export default function AuthPage() {
   const [error, setError]             = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [mounted, setMounted]         = useState(false);
+  const [slides, setSlides]           = useState([]);
 
-  // Slideshow state — fetched from API
-  const [slides, setSlides] = useState([]);
-
-  // Fetch active slideshow images on mount (no auth needed)
   useEffect(() => {
     fetch(`${BASE}/slideshow/public/`)
       .then(r => r.ok ? r.json() : [])
       .then(data => setSlides(Array.isArray(data) ? data : []))
-      .catch(() => setSlides([]));   // silently fail — show navy background only
+      .catch(() => setSlides([]));
   }, []);
 
   useEffect(() => {
@@ -175,12 +103,9 @@ export default function AuthPage() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center font-sans">
 
+      {/* ── Shared slideshow component ── */}
       <BackgroundSlideshow slides={slides} />
 
-      {/*
-        Outer wrapper — paddingTop: 66px reserves space so the 120px logo circle
-        sits half above / half below the card's top edge.
-      */}
       <div
         className="relative z-20 w-full max-w-md mx-4"
         style={{
@@ -190,8 +115,7 @@ export default function AuthPage() {
           transition: 'opacity 0.7s ease, transform 0.7s ease',
         }}
       >
-
-        {/* ── Floating Logo — OUTSIDE the card, centered on its top edge ── */}
+        {/* ── Floating Logo ── */}
         <div className="absolute top-0 left-1/2 z-30"
           style={{ transform: 'translateX(-50%)' }}>
           <div style={{
@@ -209,17 +133,8 @@ export default function AuthPage() {
               <img
                 src="/rnp_logo.png"
                 alt="Rwanda National Police"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                  display: 'block',
-                }}
-                onError={e => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block' }}
+                onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
               />
               <div style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                 <svg viewBox="0 0 64 72" style={{ width: 56, height: 56 }} fill="none">
@@ -241,10 +156,8 @@ export default function AuthPage() {
           border: '1px solid rgba(255,255,255,0.12)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
         }}>
-          {/* Top accent stripe */}
           <div className="h-1 w-full bg-gradient-to-r from-[#003580] via-[#1a6bd4] to-[#003580]" />
 
-          {/* paddingTop: 80px = 60px (logo bottom half) + 20px gap */}
           <div className="px-10 pb-10" style={{ paddingTop: '80px' }}>
 
             {/* Brand */}
@@ -276,7 +189,6 @@ export default function AuthPage() {
             {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4">
 
-              {/* Email */}
               <div>
                 <label className="block text-xs font-semibold text-blue-200/70 mb-1.5 tracking-wide uppercase">
                   Email Address
@@ -299,7 +211,6 @@ export default function AuthPage() {
                 {fieldErrors.email && <p className="text-red-400 text-xs mt-1.5 pl-1">{fieldErrors.email}</p>}
               </div>
 
-              {/* Password */}
               <div>
                 <label className="block text-xs font-semibold text-blue-200/70 mb-1.5 tracking-wide uppercase">
                   Password
@@ -326,7 +237,6 @@ export default function AuthPage() {
                 {fieldErrors.password && <p className="text-red-400 text-xs mt-1.5 pl-1">{fieldErrors.password}</p>}
               </div>
 
-              {/* Submit */}
               <button
                 type="submit" disabled={loading}
                 className="w-full mt-2 py-3.5 rounded-xl font-bold text-sm tracking-wide
@@ -353,7 +263,6 @@ export default function AuthPage() {
 
             </form>
 
-            {/* Footer */}
             <div className="mt-8 pt-6 border-t border-white/8 text-center">
               <p className="text-white/25 text-xs">
                 © {new Date().getFullYear()} Rwanda National Police · All rights reserved
@@ -363,13 +272,11 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* Card glow */}
         <div className="absolute inset-0 rounded-3xl pointer-events-none -z-10"
           style={{ boxShadow: '0 0 80px rgba(0,80,204,0.25)', filter: 'blur(20px)' }} />
 
       </div>
 
-      {/* Bottom brand bar */}
       <div className="absolute bottom-0 left-0 right-0 z-20 h-1
         bg-gradient-to-r from-transparent via-[#003580]/80 to-transparent" />
 
