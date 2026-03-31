@@ -1,0 +1,13 @@
+node_modules/
+build/
+.git/
+.gitignore
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+README.md
+nginx.conf
