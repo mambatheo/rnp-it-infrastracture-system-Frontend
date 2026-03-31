@@ -11,7 +11,7 @@ import reportDownloadManager from '../services/reportDownloadManager';
 
 const STATUS_CFG = {
   active: {
-    icon:  null,          // replaced by spinner below
+    icon:  null,          
     bg:    '#1F4E79',
     bar:   '#2E75B6',
     label: 'Generating…',
@@ -26,7 +26,7 @@ const STATUS_CFG = {
     icon:  '✕',
     bg:    '#7f1d1d',
     bar:   '#ef4444',
-    label: null,          // shows error message
+    label: null,          
   },
 };
 
