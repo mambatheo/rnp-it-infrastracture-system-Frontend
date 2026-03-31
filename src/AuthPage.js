@@ -1,11 +1,8 @@
 // src/AuthPage.jsx
 
 import { useState, useEffect } from "react";
-import { authApi } from './services/api';
+import { authApi, slideshowPublicApi } from './services/api';
 import BackgroundSlideshow from './components/BackgroundSlideshow';
-
-const BASE = (process.env.REACT_APP_API_URL ||
-  'http://itinfra-server') + '/api/v1';
 
 // ─── Token Helper ────────────────────────────────────
 const storeSession = (data) => {
@@ -62,8 +59,7 @@ export default function AuthPage() {
   const [slides, setSlides]           = useState([]);
 
   useEffect(() => {
-    fetch(`${BASE}/slideshow/public/`)
-      .then(r => r.ok ? r.json() : [])
+    slideshowPublicApi.list()
       .then(data => setSlides(Array.isArray(data) ? data : []))
       .catch(() => setSlides([]));
   }, []);

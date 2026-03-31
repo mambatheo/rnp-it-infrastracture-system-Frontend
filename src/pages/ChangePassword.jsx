@@ -1,12 +1,8 @@
 // src/pages/ChangePassword.jsx
 
 import { useState, useEffect } from 'react';
-import { usersApi } from '../services/api';
+import { usersApi, slideshowPublicApi } from '../services/api';
 import BackgroundSlideshow from '../components/BackgroundSlideshow';
-
-const BASE =
-  (process.env.REACT_APP_API_URL || 'https://historical-clair-it-infrastracture-system-e80431e7.koyeb.app') +
-  '/api/v1';
 
 // ─── Icons ───────────────────────────────────────────
 const EyeIcon = () => (
@@ -52,8 +48,7 @@ export default function ChangePassword() {
   const [slides, setSlides]           = useState([]);
 
   useEffect(() => {
-    fetch(`${BASE}/slideshow/public/`)
-      .then(r => (r.ok ? r.json() : []))
+    slideshowPublicApi.list()
       .then(data => setSlides(Array.isArray(data) ? data : []))
       .catch(() => setSlides([]));
   }, []);

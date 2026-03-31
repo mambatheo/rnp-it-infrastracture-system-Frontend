@@ -629,7 +629,8 @@ export const reportsApi = {
 export const slideshowPublicApi = {
   list: () =>
     fetch(`${BASE}/slideshow/public/`)
-      .then(r => r.json()),
+      .then(r => r.ok ? r.json() : [])
+      .catch(() => []),
 };
 
 /** Admin — requires Bearer token. Called by SlideshowAdmin page. */
