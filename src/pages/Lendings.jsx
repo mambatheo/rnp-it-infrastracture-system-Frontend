@@ -15,7 +15,13 @@ function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
     ? `${selected.name || selected.equipment_type_name} — ${selected.serial_number || selected.marking_code || ''}`
     : '';
 
-  const base     = typeFilter ? allEquipment.filter(e => e.equipment_type_name === typeFilter) : allEquipment;
+  const base = typeFilter
+    ? allEquipment.filter(e => {
+        const t1 = String(e.equipment_type_name || e.equipment_type || '').toLowerCase().trim();
+        const t2 = String(typeFilter || '').toLowerCase().trim();
+        return t1 === t2;
+      })
+    : allEquipment;
   const filtered = query.trim() === ''
     ? base
     : base.filter(e => {
@@ -240,30 +246,32 @@ export default function Lendings() {
       status: 'Active',
       issued_date: new Date().toISOString().split('T')[0],
       issued_by: currentUser?.id || null,
-      return_confirmed_by: currentUser?.id || null,
     });
     setSelected(null);
     setEqTypeFilter('');
-    setModal('form');
+    setModal('lending');
   };
 
   const openEdit = item => {
-    setForm({
-      ...item,
-      return_confirmed_by: item.return_confirmed_by || currentUser?.id || null,
-    });
+    const {
+      returned_date,
+      returned_by,
+      condition_on_return,
+      return_comments,
+      return_confirmed_by,
+      ...core
+    } = item;
+
+    setForm(core);
     setSelected(item);
     setEqTypeFilter(item.equipment_type || '');
-    setModal('form');
+    setModal('lending');
   };
 
   const handleChange = e => {
     const { name, value } = e.target;
     setForm(f => {
       const updated = { ...f, [name]: value || null };
-      if (name === 'status' && value === 'Returned' && !f.returned_date) {
-        updated.returned_date = new Date().toISOString().split('T')[0];
-      }
       if (name === 'region') { updated.dpu = null; updated.station = null; }
       if (name === 'dpu')    { updated.station = null; }
       return updated;
@@ -302,6 +310,57 @@ export default function Lendings() {
     } finally { setSub(false); }
   };
 
+  const openReturn = item => {
+    setSelected(item);
+    setEqTypeFilter(item.equipment_type || '');
+    setForm({
+      status: 'Returned',
+      returned_date: item.returned_date || new Date().toISOString().split('T')[0],
+      returned_by: '',
+      condition_on_return: item.condition_on_return || 'Good',
+      return_comments: '',
+      // not displayed in UI; set on submit
+    });
+    setModal('return');
+  };
+
+  const handleReturnSubmit = async () => {
+    if (!selected) return;
+
+    // basic client-side validation
+    if (!form.returned_date) {
+      showToast('Returned date is required.', 'error');
+      return;
+    }
+
+    setSub(true);
+    try {
+      const payload = {
+        status: 'Returned',
+        returned_date: form.returned_date,
+        returned_by: form.returned_by || null,
+        condition_on_return: form.condition_on_return || 'Good',
+        return_comments: form.return_comments || null,
+        return_confirmed_by: currentUser?.id || null,
+      };
+
+      await lendingsApi.patch(selected.id, payload);
+      showToast('Return recorded');
+      setModal(null);
+      fetchItems();
+    } catch (err) {
+      let msg = 'Failed to record return';
+      if (err && typeof err === 'object') {
+        msg = Object.entries(err)
+          .map(([f, m]) => `${f}: ${Array.isArray(m) ? m[0] : m}`)
+          .join(' | ') || JSON.stringify(err);
+      }
+      showToast(msg, 'error');
+    } finally {
+      setSub(false);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       await lendingsApi.delete(deleteId);
@@ -325,7 +384,19 @@ export default function Lendings() {
           </div>
           <button onClick={openCreate}
             className="inline-flex items-center gap-2 bg-[#003580] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#002060] transition-colors shadow-sm">
-            <span className="text-lg leading-none">+</span> New Lending
+            <span className="text-lg leading-none"></span> New Lending
+          </button>
+          <button
+            onClick={() => {
+              if (!selected) {
+                showToast('Select a lending record first (click Edit).', 'error');
+                return;
+              }
+              openReturn(selected);
+            }}
+            disabled={!selected}
+            className="inline-flex items-center gap-2 bg-[#003580] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#002060] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            <span className="text-lg leading-none"></span> Returns
           </button>
         </div>
 
@@ -449,10 +520,26 @@ export default function Lendings() {
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5">
-                        <button onClick={() => openEdit(item)}
-                          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors">
-                          Edit
-                        </button>
+                        {String(item.status || '').toLowerCase().startsWith('active') ? (
+                          <>
+                            <button onClick={() => openEdit(item)}
+                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors">
+                              Edit
+                            </button>
+                            <button onClick={() => openReturn(item)}
+                              className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium transition-colors">
+                              Return
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-400 text-xs font-medium transition-colors cursor-not-allowed"
+                          >
+                            Returned
+                          </button>
+                        )}
                         <button onClick={() => setDeleteId(item.id)}
                           className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium transition-colors">
                           Delete
@@ -480,8 +567,8 @@ export default function Lendings() {
         </div>
       </div>
 
-      {/* ── Create / Edit Modal ── */}
-      {modal === 'form' && (
+      {/* ── Lending Create / Edit Modal ── */}
+      {modal === 'lending' && (
         <Modal
           title={selected ? 'Edit Lending Record' : 'New Lending'}
           subtitle={selected ? `Editing record for ${selected.borrower_name || ''}` : 'Record a temporary equipment loan'}
@@ -492,13 +579,13 @@ export default function Lendings() {
 
             {/* ── Core Details ── */}
             <SectionDivider label="Core Details"/>
-
-            <F label="Status" required>
-              <select className={selectCls} name="status" value={form.status || ''} onChange={handleChange}>
-                <option value="">— Select —</option>
-                <option value="Active">Active</option>
-                <option value="Returned">Returned</option>
-              </select>
+            <F label="Status" required hint="Active lendings can be edited; returns are recorded separately.">
+              <input
+                className={inputCls}
+                type="text"
+                value={form.status || 'Active'}
+                readOnly
+              />
             </F>
 
             <F label="Equipment Type (filter)">
@@ -584,39 +671,6 @@ export default function Lendings() {
                 value={form.issued_date || ''} onChange={handleChange} />
             </F>
 
-            <F label={form.status === 'Returned' ? 'Returned Date *' : 'Returned Date'}>
-              <input
-                className={`${inputCls} ${form.status === 'Returned' && !form.returned_date ? 'border-red-400 ring-2 ring-red-200' : ''}`}
-                type="date" name="returned_date"
-                value={form.returned_date || ''} onChange={handleChange} />
-              {form.status === 'Returned' && !form.returned_date && (
-                <p className="text-xs text-red-500 mt-0.5">Required when status is Returned</p>
-              )}
-            </F>
-
-            {/* ── Return Details ── */}
-            <SectionDivider label="Return Details"  />
-
-            <F label="Returned By" hint="Person physically returning the item">
-              <input className={inputCls} name="returned_by" value={form.returned_by || ''}
-                onChange={handleChange} placeholder="Name of person returning" />
-            </F>
-
-            <F label="Condition on Return">
-              <select className={selectCls} name="condition_on_return" value={form.condition_on_return || ''} onChange={handleChange}>
-                <option value=""> None</option>
-                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </F>
-
-            <div className="col-span-2">
-              <F label="Return Comments">
-                <textarea className={inputCls + ' resize-none'} name="return_comments" rows={3}
-                  value={form.return_comments || ''} onChange={handleChange}
-                  placeholder="Notes about the equipment condition on return…" />
-              </F>
-            </div>
-
           </div>
 
           <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-slate-100">
@@ -627,6 +681,81 @@ export default function Lendings() {
             <button onClick={handleSubmit} disabled={submitting}
               className="px-6 py-2.5 rounded-lg bg-[#003580] text-white text-sm font-semibold disabled:opacity-50 hover:bg-[#002060] transition-colors shadow-sm">
               {submitting ? 'Saving…' : selected ? 'Update Lending' : 'Create Lending'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Return Modal ── */}
+      {modal === 'return' && (
+        <Modal
+          title="Return Lending Record"
+          subtitle={selected ? `Returning: ${selected.equipment_name || ''}` : ''}
+          onClose={() => setModal(null)}
+          size="xl"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SectionDivider label="Return Details" icon="↩️" />
+
+            <F label="Returned Date" required>
+              <input
+                className={inputCls}
+                type="date"
+                name="returned_date"
+                value={form.returned_date || ''}
+                onChange={handleChange}
+              />
+            </F>
+
+            <F label="Returned By" hint="Person physically returning the item">
+              <input
+                className={inputCls}
+                name="returned_by"
+                value={form.returned_by || ''}
+                onChange={handleChange}
+                placeholder="Name of person returning"
+              />
+            </F>
+
+            <F label="Condition on Return">
+              <select
+                className={selectCls}
+                name="condition_on_return"
+                value={form.condition_on_return || ''}
+                onChange={handleChange}
+              >
+                <option value=""> None</option>
+                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </F>
+
+            <div className="col-span-2">
+              <F label="Return Comments">
+                <textarea
+                  className={inputCls + ' resize-none'}
+                  name="return_comments"
+                  rows={3}
+                  value={form.return_comments || ''}
+                  onChange={handleChange}
+                  placeholder="Notes about the equipment condition on return…"
+                />
+              </F>
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-slate-100">
+            <button
+              onClick={() => setModal(null)}
+              className="px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleReturnSubmit}
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-lg bg-[#003580] text-white text-sm font-semibold disabled:opacity-50 hover:bg-[#002060] transition-colors shadow-sm"
+            >
+              {submitting ? 'Saving…' : 'Confirm Return'}
             </button>
           </div>
         </Modal>

@@ -5,7 +5,7 @@ import { authApi } from './services/api';
 import BackgroundSlideshow from './components/BackgroundSlideshow';
 
 const BASE = (process.env.REACT_APP_API_URL ||
-  'https://historical-clair-it-infrastracture-system-e80431e7.koyeb.app') + '/api/v1';
+  'http://itinfra-server') + '/api/v1';
 
 // ─── Token Helper ────────────────────────────────────
 const storeSession = (data) => {
