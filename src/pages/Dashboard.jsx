@@ -185,7 +185,7 @@ export default function Dashboard() {
               total={regionTotal}
               totalLabel={`Across ${regionEntries.length} region${regionEntries.length !== 1 ? 's' : ''}`}>
               {regionEntries.length === 0
-                ? <p className="text-slate-400 text-sm col-span-3 text-center py-4">No regions with equipment.</p>
+                ? <p className="text-slate-400 text-sm col-span-3 text-center py-4">No region with equipment.</p>
                 : regionEntries.map(([id, { name, count }]) => (
                     <StatCard key={id} label={name}
                       value={count} total={regionTotal} color={ACCENT} />
@@ -198,7 +198,7 @@ export default function Dashboard() {
               total={dpuTotal}
               totalLabel={`Across ${dpuEntries.length} DPU${dpuEntries.length !== 1 ? 's' : ''}`}>
               {dpuEntries.length === 0
-                ? <p className="text-slate-400 text-sm col-span-3 text-center py-4">No DPUs with equipment.</p>
+                ? <p className="text-slate-400 text-sm col-span-3 text-center py-4">No DPU with equipment.</p>
                 : dpuEntries.map(([id, { name, count }]) => (
                     <StatCard key={id} label={name}
                       value={count} total={dpuTotal} color={ACCENT} />
@@ -211,7 +211,7 @@ export default function Dashboard() {
               total={unitTotal}
               totalLabel={`Across ${unitEntries.length} unit${unitEntries.length !== 1 ? 's' : ''}`}>
               {unitEntries.length === 0
-                ? <p className="text-slate-400 text-sm col-span-3 text-center py-4">No units with equipment.</p>
+                ? <p className="text-slate-400 text-sm col-span-3 text-center py-4">No unit with equipment.</p>
                 : unitEntries.map(([id, { name, count }]) => (
                     count > 0 && (
                       <StatCard key={id} label={name}

@@ -168,7 +168,7 @@ function Section({
         <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
           {gridLabel ?? 'Per Equipment Type'}
         </h2>
-        <p className="text-xs text-slate-400">Click Excel / PDF on a card to export individually</p>
+        
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -230,10 +230,7 @@ export default function Reports() {
 
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-800">Reports</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            Get a report on any equipment type from any Unit, Region or DPU.
-            Downloads continue even if you navigate to another page.
-          </p>
+         
         </div>
 
         {loading ? (
@@ -268,7 +265,7 @@ export default function Reports() {
             <Section
               title="Stock" subtitle="Devices Currently in Stock" accent={ACCENT}
               totalValue={totals.stock}
-              totalLabel="Devices held in stock across all types"
+              totalLabel="All Devices held in Stock"
               allExcelKey="all:stock:excel" allExcelFn={() => reportsApi.stockExcelAll()}
               allPdfKey="all:stock:pdf"     allPdfFn={()   => reportsApi.stockPdfAll()}
             >
@@ -286,12 +283,12 @@ export default function Reports() {
 
             {/* ── UNITS ─────────────────────────────────────────────────── */}
             <Section
-              title="Unit" subtitle="Equipment by Organisational Unit" accent={ACCENT}
+              title="Unit" subtitle="All Special Units" accent={ACCENT}
               totalValue={unitTotal}
               totalLabel={`Across ${unitEntries.length} unit${unitEntries.length !== 1 ? 's' : ''}`}
               allExcelKey="all:unit:excel" allExcelFn={() => reportsApi.unitExcelAll()}
               allPdfKey="all:unit:pdf"     allPdfFn={()   => reportsApi.unitPdfAll()}
-              gridLabel="Per Organisational Unit"
+              gridLabel="Per Unit"
             >
               {unitEntries.length === 0 ? emptyMsg('units') : unitEntries.map(([id, { name, count }]) => (
                 <ReportCard key={id} label={name} color={ACCENT}
@@ -304,12 +301,12 @@ export default function Reports() {
 
             {/* ── REGIONS ───────────────────────────────────────────────── */}
             <Section
-              title="Region" subtitle="Organised by Region" accent={ACCENT}
+              title="Region" subtitle="All Region" accent={ACCENT}
               totalValue={regionTotal}
               totalLabel={`Across ${regionEntries.length} region${regionEntries.length !== 1 ? 's' : ''}`}
               allExcelKey="all:region:excel" allExcelFn={() => reportsApi.regionExcelAll()}
               allPdfKey="all:region:pdf"     allPdfFn={()   => reportsApi.regionPdfAll()}
-              gridLabel="Per Organisational Region"
+              gridLabel="Per Region"
             >
               {regionEntries.length === 0 ? emptyMsg('regions') : regionEntries.map(([id, { name, count }]) => (
                 <ReportCard key={id} label={name} color={ACCENT}
@@ -322,7 +319,7 @@ export default function Reports() {
 
             {/* ── DPUs ──────────────────────────────────────────────────── */}
             <Section
-              title="DPU" subtitle="Equipment in DPU HQRs and Stations" accent={ACCENT}
+              title="DPU" subtitle=" DPU and Stations" accent={ACCENT}
               totalValue={dpuTotal}
               totalLabel={`Across ${dpuEntries.length} DPU${dpuEntries.length !== 1 ? 's' : ''}`}
               allExcelKey="all:dpu:excel" allExcelFn={() => reportsApi.dpuExcelAll()}
