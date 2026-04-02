@@ -178,21 +178,43 @@ export default function Layout({ children }) {
     <div className="flex h-screen bg-slate-100 overflow-hidden">
       {/* ── Sidebar ── */}
       <aside className={`flex flex-col bg-[#001f3f] transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'} flex-shrink-0`}>
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-white/10">
-          {/* RNP Logo */}
-          <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden">
-            <img
-              src="/rnp_logo.png"
-              alt="Rwanda National Police"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          {!collapsed && (
-            <div className="overflow-hidden">
-              <p className="text-white text-sm font-bold leading-tight">IT Infra</p>
-              <p className="text-white/40 text-xs">RNP System</p>
+
+        {/* ── Logo ── */}
+        <div className="border-b border-white/10 px-4 py-5">
+          {/* Lines + logo row */}
+          <div className="flex items-center">
+            <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.85)', borderRadius: '2px' }} />
+            <div style={{
+              width: collapsed ? '32px' : '44px',
+              height: collapsed ? '32px' : '44px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              flexShrink: 0,
+              margin: collapsed ? '0 4px' : '0 10px',
+              border: '2px solid rgba(255,255,255,0.25)',
+              transition: 'all 0.3s',
+            }}>
+              <img
+                src="/rnp_logo.png"
+                alt="Rwanda National Police"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             </div>
+            <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.85)', borderRadius: '2px' }} />
+          </div>
+
+          {/* ITis label — hidden when collapsed */}
+          {!collapsed && (
+            <p style={{
+              textAlign: 'center',
+              color: 'white',
+              fontSize: '22px',
+              fontWeight: 600,
+              margin: '8px 0 0',
+              letterSpacing: '1px',
+            }}>
+              ITis
+            </p>
           )}
         </div>
 
