@@ -70,13 +70,13 @@ export default function EquipmentDetail() {
     </Layout>
   );
 
-  const icon = TYPE_ICONS[item.equipment_type] || '📦';
+  const icon = TYPE_ICONS[item.equipment_type_name] || '📦';
 
-  const hasCompute  = ['Desktop', 'Laptop', 'Server'].includes(item.equipment_type);
-  const hasServer   = item.equipment_type === 'Server';
-  const hasPhone    = item.equipment_type === 'Telephone';
-  const hasStorage  = item.equipment_type === 'External Storage';
-  const hasDisplay  = item.equipment_type === 'TV Screen';
+  const hasCompute  = ['Desktop', 'Laptop', 'Server'].includes(item.equipment_type_name);
+  const hasServer   = item.equipment_type_name === 'Server';
+  const hasPhone    = item.equipment_type_name === 'Telephone';
+  const hasStorage  = item.equipment_type_name === 'External Storage';
+  const hasDisplay  = item.equipment_type_name === 'TV Screen';
 
   return (
     <Layout>
@@ -96,7 +96,7 @@ export default function EquipmentDetail() {
               {icon}
             </div>
             <div>
-              <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">{item.equipment_type || 'Equipment'}</p>
+              <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">{item.equipment_type_name || 'Equipment'}</p>
               <h1 className="text-xl font-bold">{item.name || item.model || '—'}</h1>
               <p className="text-blue-200 text-sm mt-0.5">{item.serial_number || ''}</p>
             </div>
@@ -123,7 +123,7 @@ export default function EquipmentDetail() {
         {/* Identity */}
         <Section title="Identity">
           <Field label="Device Name"     value={item.name} />
-          <Field label="Equipment Type" value={item.equipment_type} />
+          <Field label="Equipment Type" value={item.equipment_type_name} />
           <Field label="Brand"          value={item.brand_name} />
           <Field label="Model"          value={item.model} />
           <Field label="Serial Number"  value={item.serial_number} />

@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useIdleTimeout } from '../hooks/useIdleTimeout';
 import { ROUTES } from '../config/routes';
 
+
+
 // ─── Icons (inline SVG) ───────────────────────────────────────────────────────
 const icons = {
   LayoutDashboard: () => (
@@ -85,7 +87,6 @@ const icons = {
       <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
     </svg>
   ),
-  /** Stacked frames — login page background slideshow */
   Images: () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
       <rect x="2" y="6" width="15" height="12" rx="1.5"/>
@@ -179,9 +180,13 @@ export default function Layout({ children }) {
       <aside className={`flex flex-col bg-[#001f3f] transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'} flex-shrink-0`}>
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-white/10">
-          <div className="w-8 h-8 rounded-lg bg-[#003580] flex items-center justify-center flex-shrink-0">
-            <icons.Monitor />
-            <span className="sr-only">Logo</span>
+          {/* RNP Logo */}
+          <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden">
+            <img
+              src="/rnp_logo.png"
+              alt="Rwanda National Police"
+              className="w-full h-full object-cover"
+            />
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
