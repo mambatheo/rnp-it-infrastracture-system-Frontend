@@ -1,4 +1,4 @@
-const BASE = (process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000') + '/api/v1';
+const BASE = (process.env.REACT_APP_API_URL || 'http://itinfra-server') + '/api/v1';
 
 // Token refresh interval: refresh 2 minutes before expiry (access token is 15 min)
 const TOKEN_REFRESH_INTERVAL_MS = 13 * 60 * 1000; // 13 minutes
