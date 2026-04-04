@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { reportsApi, resumeReportDownloads } from '../services/api';
 import reportDownloadManager from '../services/reportDownloadManager';
+import { XlsIcon, PdfIcon } from '../components/FileIcons';
 
 const ACCENT = '#003366';
 
@@ -9,7 +10,6 @@ const ACCENT = '#003366';
 // DOWNLOAD BUTTON
 // ─────────────────────────────────────────────────────────────────────────────
 function DlBtn({ label, icon, dlKey, apiFn, dlLabel, color = ACCENT }) {
-  // Re-render when manager notifies so the spinner updates
   const [, tick] = useState(0);
   useEffect(() => {
     const handler = () => tick((n) => n + 1);
@@ -78,12 +78,18 @@ function ReportCard({ label, count, total, color, excelKey, excelFn, pdfKey, pdf
         />
       </div>
       <div className="flex gap-2 flex-wrap">
-        <DlBtn icon="📊" label="Excel" color={color}
+        <DlBtn
+          icon={<XlsIcon size={16} />}
+          label="Excel"
+          color={color}
           dlKey={excelKey}
           apiFn={(onProgress) => excelFn(onProgress)}
           dlLabel={`${label} Excel`}
         />
-        <DlBtn icon="📄" label="PDF"   color={color}
+        <DlBtn
+          icon={<PdfIcon size={16} />}
+          label="PDF"
+          color={color}
           dlKey={pdfKey}
           apiFn={(onProgress) => pdfFn(onProgress)}
           dlLabel={`${label} PDF`}
@@ -101,7 +107,6 @@ function Section({
   allExcelKey, allExcelFn, allPdfKey, allPdfFn,
   gridLabel, children,
 }) {
-  // Re-render when manager notifies
   const [, tick] = useState(0);
   useEffect(() => {
     const handler = () => tick((n) => n + 1);
@@ -127,6 +132,8 @@ function Section({
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-white text-xs opacity-70 font-medium">Full {title} Report:</span>
+
+          {/* Excel (All) */}
           <button
             onClick={() => reportDownloadManager.start(
               allExcelKey,
@@ -138,12 +145,14 @@ function Section({
           >
             {excelBusy
               ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              : '📊'}
+              : <XlsIcon size={18} />}
             {excelBusy ? 'Queued…' : 'Excel'}
             {excelBusy && typeof excelPct === 'number' && (
               <span className="ml-1 text-[10px] text-white/80">{excelPct}%</span>
             )}
           </button>
+
+          {/* PDF (All) */}
           <button
             onClick={() => reportDownloadManager.start(
               allPdfKey,
@@ -155,7 +164,7 @@ function Section({
           >
             {pdfBusy
               ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              : '📄'}
+              : <PdfIcon size={18} />}
             {pdfBusy ? 'Queued…' : 'PDF'}
             {pdfBusy && typeof pdfPct === 'number' && (
               <span className="ml-1 text-[10px] text-white/80">{pdfPct}%</span>
@@ -168,7 +177,6 @@ function Section({
         <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
           {gridLabel ?? 'Per Equipment Type'}
         </h2>
-        
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -187,9 +195,7 @@ export default function Reports() {
   const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
-    // Resume any unfinished report downloads after reload.
     resumeReportDownloads().catch((e) => console.error(e));
-
     reportsApi.counts()
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => { setFetchError('Failed to load report data.'); setLoading(false); });
@@ -230,7 +236,6 @@ export default function Reports() {
 
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-800">Reports</h1>
-         
         </div>
 
         {loading ? (
@@ -319,7 +324,7 @@ export default function Reports() {
 
             {/* ── DPUs ──────────────────────────────────────────────────── */}
             <Section
-              title="DPU" subtitle=" DPU and Stations" accent={ACCENT}
+              title="DPU" subtitle="DPU and Stations" accent={ACCENT}
               totalValue={dpuTotal}
               totalLabel={`Across ${dpuEntries.length} DPU${dpuEntries.length !== 1 ? 's' : ''}`}
               allExcelKey="all:dpu:excel" allExcelFn={() => reportsApi.dpuExcelAll()}

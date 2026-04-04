@@ -1,6 +1,6 @@
 const BASE = (process.env.REACT_APP_API_URL || '') + '/api/v1';
 
-// Token refresh interval: refresh 2 minutes before expiry (access token is 15 min)
+
 const TOKEN_REFRESH_INTERVAL_MS = 13 * 60 * 1000; // 13 minutes
 
 let _refreshing = null; // prevent concurrent refresh races
@@ -47,11 +47,7 @@ function deleteReportJob(task_id) {
   writeReportJobs(jobs);
 }
 
-/**
- * Refresh access token using the refresh token.
- * Returns true if successful, false otherwise.
- * Exported so it can be used by the proactive refresh hook.
- */
+
 export async function refreshTokens() {
   const refresh = localStorage.getItem('refresh_token');
   if (!refresh) return false;
@@ -69,10 +65,7 @@ export async function refreshTokens() {
   } catch { return false; }
 }
 
-/**
- * Get the token refresh interval in milliseconds.
- * Exported for use by the proactive refresh hook.
- */
+
 export function getTokenRefreshInterval() {
   return TOKEN_REFRESH_INTERVAL_MS;
 }
@@ -169,10 +162,7 @@ async function apiFetch(path, options = {}, _retry = false) {
 
 
 // ─── Async report download (Celery polling) ───────────────────────────────────
-// 1. Calls the report URL → backend enqueues task, returns { task_id, download_token }
-// 2. Polls every 2 s with ?task_id=<id>[&dl_token=...] until HTTP 200 (file ready)
-// 3. Streams the blob and triggers a browser download
-// onProgress(progress) is called with integer 0–100 when backend exposes it.
+
 async function downloadReport(path, filename, onProgress) {
   const headers = { 'Content-Type': 'application/json' };
   const fullUrl = `${BASE}${path}`;
@@ -426,6 +416,13 @@ export const officesApi = {
   create: (data)  => post('/equipment/offices/', data),
   update: (id, d) => put(`/equipment/offices/${id}/`, d),
   delete: (id)    => del(`/equipment/offices/${id}/`),
+};
+
+export const trainingSchoolsApi = {
+  list:   (p)     => get('/equipment/training-schools/', p),
+  create: (data)  => post('/equipment/training-schools/', data),
+  update: (id, d) => put(`/equipment/training-schools/${id}/`, d),
+  delete: (id)    => del(`/equipment/training-schools/${id}/`),
 };
 
 // ─── Equipment ────────────────────────────────────────────────────────────────

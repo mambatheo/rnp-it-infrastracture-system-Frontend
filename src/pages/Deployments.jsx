@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
+import { useDebounce } from '../hooks/useDebounce';
 import { deploymentsApi, usersApi, equipmentApi, categoriesApi, regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi, stationsApi, unitsApi, officesApi, directoratesApi, departmentsApi } from '../services/api';
 
 // ─── Amazon-style Equipment Combobox ──────────────────────────────────────────
@@ -152,6 +153,7 @@ export default function Deployments() {
 
   // Table-level search & filter
   const [tableSearch, setTableSearch] = useState('');
+  const debouncedTableSearch          = useDebounce(tableSearch, 400);
   const [tableType,   setTableType]   = useState('');
 
   // Reference data
@@ -192,17 +194,17 @@ export default function Deployments() {
     setLoading(true);
     try {
       const params = { page, page_size: pageSize };
-      if (tableSearch) params.search                              = tableSearch;
-      if (tableType)   params['equipment__equipment_type__name']  = tableType;  // FK name filter
+      if (debouncedTableSearch) params.search                             = debouncedTableSearch;
+      if (tableType)            params['equipment__equipment_type__name'] = tableType;
       const d = await deploymentsApi.list(params);
       setItems(d.results || []);
       setTotal(d.count || 0);
     } catch { showToast('Failed to load', 'error'); }
     finally { setLoading(false); }
-  }, [page, tableSearch, tableType]);
+  }, [page, debouncedTableSearch, tableType]);
 
-  // Reset to page 1 when search/filter changes
-  useEffect(() => { setPage(1); }, [tableSearch, tableType]);
+  // Reset to page 1 when debounced search or type filter changes
+  useEffect(() => { setPage(1); }, [debouncedTableSearch, tableType]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -277,7 +279,7 @@ export default function Deployments() {
             className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30"
             placeholder="Search serial, name, model…"
             value={tableSearch}
-            onChange={e => { setTableSearch(e.target.value); setPage(1); }}
+            onChange={e => setTableSearch(e.target.value)}
           />
 
           {/* Equipment Type filter */}

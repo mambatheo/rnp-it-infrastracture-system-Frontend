@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
+import { useDebounce } from '../hooks/useDebounce';
 import {
   stockApi, equipmentApi, deploymentsApi,
   regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi,
@@ -58,6 +59,7 @@ export default function Stock() {
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [search, setSearch]     = useState('');
+  const debouncedSearch         = useDebounce(search, 400);
   const [loading, setLoading]   = useState(false);
   const [modal, setModal]       = useState(null);
   const [selected, setSelected] = useState(null);
@@ -114,11 +116,14 @@ export default function Stock() {
   }, []);
 
   // ── Fetch stock items ──────────────────────────────────────────────
+  // Reset to page 1 whenever debounced search changes
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, page_size: PAGE_SIZE };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       const d = await stockApi.list(params);
       setItems(d.results || []);
       setTotal(d.count   || 0);
@@ -127,7 +132,7 @@ export default function Stock() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -256,7 +261,7 @@ export default function Stock() {
             className="border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30 max-w-xs w-full"
             placeholder="Search equipment name, serial, location…"
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => setSearch(e.target.value)}
           />
           <button
             onClick={openCreate}

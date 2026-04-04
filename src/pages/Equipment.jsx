@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { equipmentApi, categoriesApi, brandsApi, statusesApi, regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi, stationsApi, unitsApi, directoratesApi, departmentsApi, officesApi, usersApi } from '../services/api';
+import { useDebounce } from '../hooks/useDebounce';
+import {
+  equipmentApi, categoriesApi, brandsApi, statusesApi,
+  regionOfficesApi, regionsApi, dpuOfficesApi, dpusApi,
+  stationsApi, unitsApi, directoratesApi, departmentsApi,
+  officesApi, usersApi, trainingSchoolsApi,
+} from '../services/api';
 
 const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30";
-
 
 const PRINTER_TYPES    = ['printer', 'scanner', 'multipurpose'];
 const NETWORK_TYPES    = ['Switch', 'Router', 'Firewall', 'Access_point', 'Repeater', 'Hub', 'Modem', 'Gateway', 'Bridge'];
@@ -41,23 +46,16 @@ function IntentPickerModal({ onPick, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        {/* Header */}
         <div className="bg-gradient-to-r from-[#003366] to-[#003580] px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">New Equipment</p>
-             
             </div>
-            <button onClick={onClose}
-              className="text-white/60 hover:text-white text-2xl leading-none transition-colors">
-              ✕
-            </button>
+            <button onClick={onClose} className="text-white/60 hover:text-white text-2xl leading-none transition-colors">✕</button>
           </div>
         </div>
-
-        {/* Picker cards */}
         <div className="p-6 grid grid-cols-2 gap-4">
-            <button
+          <button
             onClick={() => onPick('Stock')}
             className="group flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-slate-100
               hover:border-[#003580] hover:bg-[#003580]/5 transition-all text-left">
@@ -66,11 +64,8 @@ function IntentPickerModal({ onPick, onClose }) {
             </div>
             <div>
               <p className="font-bold text-slate-800 text-sm">Stock It</p>
-              
             </div>
           </button>
-
-          {/* Deploy It */}
           <button
             onClick={() => onPick('Deployment')}
             className="group flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-slate-100
@@ -80,12 +75,9 @@ function IntentPickerModal({ onPick, onClose }) {
             </div>
             <div>
               <p className="font-bold text-slate-800 text-sm">Deploy It</p>
-              
             </div>
           </button>
         </div>
-
-    
       </div>
     </div>
   );
@@ -99,7 +91,6 @@ const F = ({ label, children }) => (
   </div>
 );
 
-// ─── Equipment form ────────────────────────────────────────────────────────────
 function SectionHead({ label }) {
   return (
     <div className="col-span-2 mt-2">
@@ -108,8 +99,14 @@ function SectionHead({ label }) {
   );
 }
 
+// ─── Equipment Form ───────────────────────────────────────────────────────────
 function EquipmentForm({ form, onChange, refs }) {
-  const { brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, categories } = refs;
+  const {
+    brands, statuses, regionOffices, regions, dpuOffices, dpus,
+    stations, units, directorates, departments, offices, categories,
+    trainingSchools,
+  } = refs;
+
   const eqType = form.equipment_type_name || form.equipment_type || '';
   const intent = form.registration_intent;
 
@@ -122,7 +119,8 @@ function EquipmentForm({ form, onChange, refs }) {
   const showExstorage  = eqType === 'External Storage';
   const showPeripheral = eqType === 'Peripheral';
   const isDeployment   = intent === 'Deployment';
-  const hasSpecs = showComputer || showServer || showDisplay || showPrinter || showNetwork || showTelephone || showExstorage || showPeripheral;
+  const hasSpecs = showComputer || showServer || showDisplay || showPrinter ||
+                   showNetwork || showTelephone || showExstorage || showPeripheral;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -139,7 +137,7 @@ function EquipmentForm({ form, onChange, refs }) {
         </div>
       )}
 
-      {/* ══ Equipment Information ══════════════════════════════════════════════ */}
+      {/* ══ Device Specifications ══════════════════════════════════════════════ */}
       <SectionHead label="Device Specifications" />
 
       <F label="Equipment Type *">
@@ -179,8 +177,8 @@ function EquipmentForm({ form, onChange, refs }) {
         <input className={inputCls} name="marking_code" value={form.marking_code || ''} onChange={onChange} />
       </F>
 
-      {/* ══ Device Specifications (type-specific) ═════════════════════════ */}
-      {hasSpecs && <SectionHead label="Device Specifications" />}
+      {/* ══ Type-specific specs ════════════════════════════════════════════════ */}
+      {hasSpecs && <SectionHead label="Technical Specifications" />}
 
       {(showComputer || showServer || showTelephone) && (<>
         <F label="CPU"><input className={inputCls} name="CPU" value={form.CPU || ''} onChange={onChange} /></F>
@@ -243,11 +241,8 @@ function EquipmentForm({ form, onChange, refs }) {
         </F>
       )}
 
-
-      {/* ══ Deployment-only fields (hidden for Stock) ══════════════════════ */}
+      {/* ══ Deployment-only fields ════════════════════════════════════════════ */}
       {isDeployment && (<>
-
-       
 
         {/* Individual Recipient */}
         <SectionHead label="Individual Recipient (Police Officer)" />
@@ -267,32 +262,40 @@ function EquipmentForm({ form, onChange, refs }) {
 
         <F label="Region Office (HQ)">
           <select className={inputCls} name="issued_to_region_office" value={form.issued_to_region_office || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {regionOffices.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </F>
         <F label="Region">
           <select className={inputCls} name="issued_to_region" value={form.issued_to_region || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </F>
         <F label="DPU Office (HQ)">
           <select className={inputCls} name="issued_to_dpu_office" value={form.issued_to_dpu_office || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {dpuOffices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="DPU">
           <select className={inputCls} name="issued_to_dpu" value={form.issued_to_dpu || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {dpus.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="Station">
           <select className={inputCls} name="issued_to_station" value={form.issued_to_station || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </F>
+
+        {/* Training School */}
+        <F label="Training School">
+          <select className={inputCls} name="issued_to_training_school" value={form.issued_to_training_school || ''} onChange={onChange}>
+            <option value="">None</option>
+            {(trainingSchools || []).map(ts => <option key={ts.id} value={ts.id}>{ts.name}</option>)}
           </select>
         </F>
 
@@ -300,46 +303,42 @@ function EquipmentForm({ form, onChange, refs }) {
         <SectionHead label="Units & Departments" />
         <F label="Unit">
           <select className={inputCls} name="issued_to_unit" value={form.issued_to_unit || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </F>
         <F label="Directorate">
           <select className={inputCls} name="issued_to_directorate" value={form.issued_to_directorate || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {directorates.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="Department">
           <select className={inputCls} name="issued_to_department" value={form.issued_to_department || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </F>
         <F label="Office">
           <select className={inputCls} name="issued_to_office" value={form.issued_to_office || ''} onChange={onChange}>
-            <option value="">None </option>
+            <option value="">None</option>
             {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
         </F>
-        {/* ══ Dates ══════════════════════════════════════════════════════════ */}
-      <SectionHead label="Dates" />
 
-      <F label="Deployment Date">
-        <input className={inputCls} type="date" name="deployment_date" value={form.deployment_date || ''} onChange={onChange} />
-      </F>
-
-      <F label="Warranty Expiry">
-        <input className={inputCls} type="date" name="warranty_expiration" value={form.warranty_expiration || ''} onChange={onChange} />
-      </F>
+        {/* Dates */}
+        <SectionHead label="Dates" />
+        <F label="Deployment Date">
+          <input className={inputCls} type="date" name="deployment_date" value={form.deployment_date || ''} onChange={onChange} />
+        </F>
+        <F label="Warranty Expiry">
+          <input className={inputCls} type="date" name="warranty_expiration" value={form.warranty_expiration || ''} onChange={onChange} />
+        </F>
 
       </>)}
 
-      
-
-      {/* ══ Comments ═══════════════════════════════════════════════════════ */}
+      {/* ══ Comments ═══════════════════════════════════════════════════════════ */}
       <SectionHead label="Comments" />
-
       <div className="col-span-2">
         <textarea className={inputCls + ' resize-none'} name="comments" rows={3} value={form.comments || ''} onChange={onChange} />
       </div>
@@ -356,6 +355,7 @@ const READONLY_FIELDS = [
   'brand_name', 'status_name',
   'region_name', 'dpu_name', 'station_name', 'unit_name',
   'directorate_name', 'department_name', 'office_name',
+  'training_school_name',
   'created_by_name', 'updated_by_name',
   'age_since_deployed', 'is_in_stock',
   'created_at', 'updated_at',
@@ -368,7 +368,9 @@ export default function Equipment() {
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [search, setSearch]     = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const debouncedSearch         = useDebounce(search, 400);
+  const [typeFilter, setTypeFilter]         = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
   const [loading, setLoading]   = useState(false);
   const [modal, setModal]       = useState(null);
   const [selected, setSelected] = useState(null);
@@ -377,9 +379,18 @@ export default function Equipment() {
   const [deleteId, setDeleteId] = useState(null);
   const [toast, setToast]       = useState({ msg: '', type: 'success' });
 
-  const [refs, setRefs] = useState({ categories: [], brands: [], statuses: [], regionOffices: [], regions: [], dpuOffices: [], dpus: [], stations: [], units: [], directorates: [], departments: [], offices: [], users: [] });
+  const [refs, setRefs] = useState({
+    categories: [], brands: [], statuses: [],
+    regionOffices: [], regions: [], dpuOffices: [], dpus: [],
+    stations: [], units: [], directorates: [], departments: [], offices: [],
+    users: [],
+    trainingSchools: [],
+  });
 
-  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast({ msg: '', type }), 3000); };
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast({ msg: '', type }), 3000);
+  };
 
   // Load reference data
   useEffect(() => {
@@ -398,37 +409,52 @@ export default function Equipment() {
       departmentsApi.list(p),
       officesApi.list(p),
       usersApi.list(p),
-    ]).then(([categories, brands, statuses, regionOffices, regions, dpuOffices, dpus, stations, units, directorates, departments, offices, users]) => {
+      trainingSchoolsApi.list(p),
+    ]).then(([
+      categories, brands, statuses, regionOffices, regions,
+      dpuOffices, dpus, stations, units, directorates,
+      departments, offices, users,
+      trainingSchools,
+    ]) => {
+      const r = (settled) => settled.value?.results || settled.value || [];
       setRefs({
-        categories:    categories.value?.results    || categories.value    || [],
-        brands:        brands.value?.results        || brands.value        || [],
-        statuses:      statuses.value?.results      || statuses.value      || [],
-        regionOffices: regionOffices.value?.results || regionOffices.value || [],
-        regions:       regions.value?.results       || regions.value       || [],
-        dpuOffices:    dpuOffices.value?.results    || dpuOffices.value    || [],
-        dpus:          dpus.value?.results          || dpus.value          || [],
-        stations:      stations.value?.results      || stations.value      || [],
-        units:         units.value?.results         || units.value         || [],
-        directorates:  directorates.value?.results  || directorates.value  || [],
-        departments:   departments.value?.results   || departments.value   || [],
-        offices:       offices.value?.results       || offices.value       || [],
-        users:         users.value?.results         || users.value         || [],
+        categories:      r(categories),
+        brands:          r(brands),
+        statuses:        r(statuses),
+        regionOffices:   r(regionOffices),
+        regions:         r(regions),
+        dpuOffices:      r(dpuOffices),
+        dpus:            r(dpus),
+        stations:        r(stations),
+        units:           r(units),
+        directorates:    r(directorates),
+        departments:     r(departments),
+        offices:         r(offices),
+        users:           r(users),
+        trainingSchools: r(trainingSchools), 
       });
     });
   }, []);
+
+  // Reset to page 1 on filter/search changes
+  useEffect(() => { setPage(1); }, [debouncedSearch, typeFilter, locationFilter]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, page_size: PAGE_SIZE };
-      if (search) params.search = search;
-      if (typeFilter) params['equipment_type__name'] = typeFilter;  // FK name filter
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (typeFilter)      params['equipment_type__name'] = typeFilter;    
+      if (locationFilter)  params['location'] = locationFilter;
       const d = await equipmentApi.list(params);
       setItems(d.results || []);
       setTotal(d.count || 0);
-    } catch { showToast('Failed to load equipment', 'error'); }
-    finally { setLoading(false); }
-  }, [page, search, typeFilter]);
+    } catch {
+      showToast('Failed to load equipment', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedSearch, typeFilter, locationFilter]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -438,7 +464,6 @@ export default function Equipment() {
   const openEdit   = item => {
     setForm({
       ...item,
-      // equipment_type FK comes back as UUID; the form <select> needs the name string
       equipment_type: item.equipment_type_name || item.equipment_type || '',
     });
     setSelected(item);
@@ -453,84 +478,124 @@ export default function Equipment() {
   const handleSubmit = async () => {
     setSub(true);
     try {
-      const payload = Object.fromEntries(Object.entries(form).filter(([k]) => !READONLY_FIELDS.includes(k)));
+      const payload = Object.fromEntries(
+        Object.entries(form).filter(([k]) => !READONLY_FIELDS.includes(k))
+      );
 
-      // Resolve equipment_type_name (string) → equipment_type UUID for the FK
+
       if (form.equipment_type_name) {
         const cat = refs.categories.find(c => c.name === form.equipment_type_name);
-        if (cat) payload.equipment_type = cat.id;
-        else payload.equipment_type = null;
+        payload.equipment_type = cat ? cat.id : null;
       }
       delete payload.equipment_type_name;
 
-      // For Deployment intent: map issued_to_* fields to Equipment's location fields
-      // The Equipment model stores the current location; issued_to_* is for Deployment records
+      // Map issued_to_* → Equipment location fields for Deployment
       if (payload.registration_intent === 'Deployment') {
-        // Map issued_to_* → Equipment location fields
         const locationMap = {
-          issued_to_region: 'region',
-          issued_to_dpu: 'dpu',
-          issued_to_station: 'station',
-          issued_to_unit: 'unit',
+          issued_to_region:    'region',
+          issued_to_dpu:       'dpu',
+          issued_to_station:   'station',
+          issued_to_unit:      'unit',
           issued_to_directorate: 'directorate',
-          issued_to_department: 'department',
-          issued_to_office: 'office',
+          issued_to_department:  'department',
+          issued_to_office:      'office',
+          issued_to_training_school: 'training_school',
         };
         Object.entries(locationMap).forEach(([from, to]) => {
-          if (payload[from]) {
-            payload[to] = payload[from];
-          }
+          if (payload[from]) payload[to] = payload[from];
         });
       }
 
       // Nullify empty FK strings
-      ['brand', 'status', 'region', 'dpu', 'station', 'unit', 'directorate', 'department', 'office',
-       'issued_to_region_office', 'issued_to_region', 'issued_to_dpu_office', 'issued_to_dpu',
-       'issued_to_station', 'issued_to_unit', 'issued_to_directorate', 'issued_to_department', 'issued_to_office'
+      [
+        'brand', 'status', 'region', 'dpu', 'station', 'unit',
+        'directorate', 'department', 'office', 'training_school', 
+        'issued_to_region_office', 'issued_to_region', 'issued_to_dpu_office',
+        'issued_to_dpu', 'issued_to_station', 'issued_to_unit',
+        'issued_to_directorate', 'issued_to_department', 'issued_to_office',
+        'issued_to_training_school', 
       ].forEach(k => {
         if (payload[k] === '' || payload[k] === undefined) payload[k] = null;
       });
 
-      if (selected) { await equipmentApi.update(selected.id, payload); showToast('Equipment updated'); }
-      else          { await equipmentApi.create(payload); showToast('Equipment created'); }
-      setModal(null); fetchItems();
+      if (selected) {
+        await equipmentApi.update(selected.id, payload);
+        showToast('Equipment updated');
+      } else {
+        await equipmentApi.create(payload);
+        showToast('Equipment created');
+      }
+      setModal(null);
+      fetchItems();
     } catch (err) {
       const msg = typeof err === 'object' ? JSON.stringify(err) : 'Failed to save';
       showToast(msg, 'error');
-    } finally { setSub(false); }
+    } finally {
+      setSub(false);
+    }
   };
 
   const handleDelete = async () => {
-    try { await equipmentApi.delete(deleteId); showToast('Equipment deleted'); setDeleteId(null); fetchItems(); }
-    catch { showToast('Failed to delete', 'error'); }
+    try {
+      await equipmentApi.delete(deleteId);
+      showToast('Equipment deleted');
+      setDeleteId(null);
+      fetchItems();
+    } catch {
+      showToast('Failed to delete', 'error');
+    }
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
-
 
   return (
     <Layout>
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-800">Equipment</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Manage IT equipment inventory — {total} total records</p>
+          <p className="text-slate-500 text-sm mt-0.5">Manage IT equipment : {total} total records</p>
         </div>
 
-        {/* Search + Filter bar */}
+        {/* Single, clean filter bar  */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <input
-            className="border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30 max-w-xs w-full"
+            className="border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30 w-56"
             placeholder="Search serial, name, model…"
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }} />
+            onChange={e => setSearch(e.target.value)}
+          />
+
+          {/* Type filter */}
           <select
             className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30"
             value={typeFilter}
-            onChange={e => { setTypeFilter(e.target.value); setPage(1); }}>
+            onChange={e => setTypeFilter(e.target.value)}>
             <option value="">All Types</option>
             {refs.categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
-          <button onClick={openCreate}
+
+          {/* Unified location filter */}
+          <select
+            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30"
+            value={locationFilter}
+            onChange={e => setLocationFilter(e.target.value)}>
+            <option value="">All Locations</option>
+            <optgroup label="Regions">
+              {refs.regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </optgroup>
+            <optgroup label="DPUs">
+              {refs.dpus.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </optgroup>
+            <optgroup label="Units">
+              {refs.units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </optgroup>
+            <optgroup label="Training Schools">
+              {refs.trainingSchools.map(ts => <option key={ts.id} value={ts.id}>{ts.name}</option>)}
+            </optgroup>
+          </select>
+
+          <button
+            onClick={openCreate}
             className="ml-auto flex-shrink-0 inline-flex items-center gap-1.5 bg-[#003580] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#002060]">
             <span className="text-lg leading-none">+</span> Add Equipment
           </button>
@@ -553,10 +618,11 @@ export default function Equipment() {
                 ) : items.length === 0 ? (
                   <tr><td colSpan={10} className="text-center py-12 text-slate-400">No equipment found.</td></tr>
                 ) : items.map(item => (
-                  <tr key={item.id}
+                  <tr
+                    key={item.id}
                     className="border-b border-slate-50 hover:bg-[#003580]/5 cursor-pointer"
                     onClick={() => navigate(`/equipment/${item.id}`)}>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">                     
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                       <span className="text-xs font-medium text-slate-500">{item.equipment_type_name || '—'}</span>
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-800">{item.name || '—'}</td>
@@ -570,7 +636,9 @@ export default function Equipment() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">
-                      {[item.region_name, item.dpu_name, item.station_name].filter(Boolean).join(' › ') || '—'}
+                      {/*Show training_school_name if no region/dpu/station */}
+                      {[item.region_name, item.dpu_name, item.station_name, item.training_school_name]
+                        .filter(Boolean).join(' › ') || '—'}
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {item.age_since_deployed
@@ -606,15 +674,12 @@ export default function Equipment() {
           )}
         </div>
 
-        {/* Intent Picker — shown before the form on Add */}
+        {/* Intent Picker */}
         {modal === 'intent' && (
-          <IntentPickerModal
-            onPick={pickIntent}
-            onClose={() => setModal(null)}
-          />
+          <IntentPickerModal onPick={pickIntent} onClose={() => setModal(null)} />
         )}
 
-        {/* Add/Edit Modal */}
+        {/* Add / Edit Modal */}
         {modal === 'form' && (
           <Modal
             title={selected
