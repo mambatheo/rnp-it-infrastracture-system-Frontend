@@ -185,8 +185,8 @@ export default function Layout({ children }) {
           <div className="flex items-center">
             <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.85)', borderRadius: '2px' }} />
             <div style={{
-              width: collapsed ? '32px' : '44px',
-              height: collapsed ? '32px' : '44px',
+              width: collapsed ? '32px' : '56px',
+              height: collapsed ? '32px' : '56px',
               borderRadius: '50%',
               overflow: 'hidden',
               flexShrink: 0,
@@ -208,7 +208,7 @@ export default function Layout({ children }) {
             <p style={{
               textAlign: 'center',
               color: 'white',
-              fontSize: '22px',
+              fontSize: '15px',
               fontWeight: 600,
               margin: '8px 0 0',
               letterSpacing: '1px',
