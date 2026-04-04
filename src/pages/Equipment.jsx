@@ -289,17 +289,9 @@ function EquipmentForm({ form, onChange, refs }) {
             <option value="">None</option>
             {stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-        </F>
+        </F>       
 
-        {/* Training School */}
-        <F label="Training School">
-          <select className={inputCls} name="issued_to_training_school" value={form.issued_to_training_school || ''} onChange={onChange}>
-            <option value="">None</option>
-            {(trainingSchools || []).map(ts => <option key={ts.id} value={ts.id}>{ts.name}</option>)}
-          </select>
-        </F>
-
-        {/* Units & Departments */}
+        {/* Special Units  */}
         <SectionHead label="Units & Departments" />
         <F label="Unit">
           <select className={inputCls} name="issued_to_unit" value={form.issued_to_unit || ''} onChange={onChange}>
@@ -325,6 +317,16 @@ function EquipmentForm({ form, onChange, refs }) {
             {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
         </F>
+        {/* Training School */}
+        <SectionHead label="Training Schools" />
+        <F label="Training School">
+          <select className={inputCls} name="issued_to_training_school" value={form.issued_to_training_school || ''} onChange={onChange}>
+            <option value="">None</option>
+            {(trainingSchools || []).map(ts => <option key={ts.id} value={ts.id}>{ts.name}</option>)}
+          </select>
+        </F>
+        {/* empty div to keep 2-col grid balanced */}
+        <div />
 
         {/* Dates */}
         <SectionHead label="Dates" />
