@@ -447,7 +447,15 @@ export default function Equipment() {
       const params = { page, page_size: PAGE_SIZE };
       if (debouncedSearch) params.search = debouncedSearch;
       if (typeFilter)      params['equipment_type__name'] = typeFilter;    
-      if (locationFilter)  params['location'] = locationFilter;
+      
+      if (locationFilter) {
+        const [prefix, id] = locationFilter.split(':');
+        if (prefix === 'REG') params['region'] = id;
+        if (prefix === 'DPU') params['dpu'] = id;
+        if (prefix === 'UNT') params['unit'] = id;
+        if (prefix === 'SCH') params['training_school'] = id;
+      }
+
       const d = await equipmentApi.list(params);
       setItems(d.results || []);
       setTotal(d.count || 0);
@@ -583,16 +591,16 @@ export default function Equipment() {
             onChange={e => setLocationFilter(e.target.value)}>
             <option value="">All Locations</option>
             <optgroup label="Regions">
-              {refs.regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {refs.regions.map(r => <option key={r.id} value={`REG:${r.id}`}>{r.name}</option>)}
             </optgroup>
             <optgroup label="DPUs">
-              {refs.dpus.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {refs.dpus.map(d => <option key={d.id} value={`DPU:${d.id}`}>{d.name}</option>)}
             </optgroup>
             <optgroup label="Units">
-              {refs.units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {refs.units.map(u => <option key={u.id} value={`UNT:${u.id}`}>{u.name}</option>)}
             </optgroup>
             <optgroup label="Training Schools">
-              {refs.trainingSchools.map(ts => <option key={ts.id} value={ts.id}>{ts.name}</option>)}
+              {refs.trainingSchools.map(ts => <option key={ts.id} value={`SCH:${ts.id}`}>{ts.name}</option>)}
             </optgroup>
           </select>
 
