@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { lendingsApi, equipmentApi, categoriesApi } from '../services/api';
-import { regionsApi, dpusApi, stationsApi, unitsApi } from '../services/api';
-import { useAuth } from '../hooks/useAuth'; 
+import { regionsApi, dpusApi, stationsApi, unitsApi, trainingSchoolsApi } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 // ─── Equipment Combobox ────────────────────────────────────────────────────────
 function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
@@ -60,7 +60,7 @@ function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
         )}
       </div>
       {value && !open && (
-        <p className="mt-1 text-xs text-blue-600 font-medium truncate px-1"> {display}</p>
+        <p className="mt-1 text-xs text-blue-600 font-medium truncate px-1">{display}</p>
       )}
       {open && (
         <ul className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-56 overflow-y-auto">
@@ -181,12 +181,13 @@ export default function Lendings() {
   const [tableType,   setTableType]   = useState('');
 
   // Reference data
-  const [allEquipment, setAllEquipment] = useState([]);
-  const [categories,   setCategories]   = useState([]);
-  const [regions,      setRegions]      = useState([]);
-  const [dpus,         setDpus]         = useState([]);
-  const [stations,     setStations]     = useState([]);
-  const [units,        setUnits]        = useState([]);
+  const [allEquipment,   setAllEquipment]   = useState([]);
+  const [categories,     setCategories]     = useState([]);
+  const [regions,        setRegions]        = useState([]);
+  const [dpus,           setDpus]           = useState([]);
+  const [stations,       setStations]       = useState([]);
+  const [units,          setUnits]          = useState([]);
+  const [trainingSchools, setTrainingSchools] = useState([]);   // ← added
 
   // Cascading FK filters
   const [filteredDpus,     setFilteredDpus]     = useState([]);
@@ -208,6 +209,7 @@ export default function Lendings() {
     dpusApi.list(p).then(d => setDpus(d.results || [])).catch(() => {});
     stationsApi.list(p).then(d => setStations(d.results || [])).catch(() => {});
     unitsApi.list(p).then(d => setUnits(d.results || [])).catch(() => {});
+    trainingSchoolsApi.list(p).then(d => setTrainingSchools(d.results || [])).catch(() => {}); // ← added
   }, []);
 
   // Cascade: filter DPUs by region
@@ -283,10 +285,11 @@ export default function Lendings() {
     try {
       const payload = { ...form };
       READONLY_FIELDS.forEach(k => delete payload[k]);
-      ['equipment', 'issued_by', 'return_confirmed_by', 'region', 'dpu', 'station', 'unit'].forEach(k => {
+      ['equipment', 'issued_by', 'return_confirmed_by', 'region', 'dpu', 'station', 'unit', 'training_school'].forEach(k => {
         if (payload[k] === '' || payload[k] === undefined) payload[k] = null;
       });
-      ['returned_date', 'condition_on_return', 'return_comments', 'returned_by', 'phone_number', 'purpose'].forEach(k => {
+      ['returned_date', 'condition_on_return', 'return_comments', 'returned_by',
+       'phone_number', 'purpose', 'training_school_location'].forEach(k => {
         if (payload[k] === '') payload[k] = null;
       });
 
@@ -319,7 +322,6 @@ export default function Lendings() {
       returned_by: '',
       condition_on_return: item.condition_on_return || 'Good',
       return_comments: '',
-      // not displayed in UI; set on submit
     });
     setModal('return');
   };
@@ -327,7 +329,6 @@ export default function Lendings() {
   const handleReturnSubmit = async () => {
     if (!selected) return;
 
-    // basic client-side validation
     if (!form.returned_date) {
       showToast('Returned date is required.', 'error');
       return;
@@ -384,7 +385,7 @@ export default function Lendings() {
           </div>
           <button onClick={openCreate}
             className="inline-flex items-center gap-2 bg-[#003580] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#002060] transition-colors shadow-sm">
-            <span className="text-lg leading-none"></span> New Lending
+            <span className="text-lg leading-none">＋</span> New Lending
           </button>
           <button
             onClick={() => {
@@ -396,7 +397,7 @@ export default function Lendings() {
             }}
             disabled={!selected}
             className="inline-flex items-center gap-2 bg-[#003580] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#002060] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-            <span className="text-lg leading-none"></span> Returns
+            <span className="text-lg leading-none">↩</span> Returns
           </button>
         </div>
 
@@ -578,7 +579,7 @@ export default function Lendings() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             {/* ── Core Details ── */}
-            <SectionDivider label="Core Details"/>
+            <SectionDivider label="Core Details" />
             <F label="Status" required hint="Active lendings can be edited; returns are recorded separately.">
               <input
                 className={inputCls}
@@ -628,43 +629,70 @@ export default function Lendings() {
             </div>
 
             {/* ── Special Unit ── */}
-            <SectionDivider label="Special Unit"/>
+            <SectionDivider label="Special Unit" />
 
             <div className="col-span-2">
               <F label="Unit" hint="Select if borrower belongs to a Special Unit (IPO, CID, etc.)">
                 <select className={selectCls} name="unit" value={form.unit || ''} onChange={handleChange}>
-                  <option value=""> None</option>
+                  <option value="">None</option>
                   {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </F>
             </div>
 
             {/* ── Territorial Units ── */}
-            <SectionDivider label="Territorial Units"/>
+            <SectionDivider label="Territorial Units" />
 
             <F label="Region" hint="Borrower's region office">
               <select className={selectCls} name="region" value={form.region || ''} onChange={handleChange}>
-                <option value=""> None</option>
+                <option value="">None</option>
                 {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </F>
 
             <F label="DPU" hint="Filtered by selected region">
               <select className={selectCls} name="dpu" value={form.dpu || ''} onChange={handleChange}>
-                <option value=""> None</option>
+                <option value="">None</option>
                 {filteredDpus.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </F>
 
             <F label="Station" hint="Filtered by selected DPU">
               <select className={selectCls} name="station" value={form.station || ''} onChange={handleChange}>
-                <option value=""> None</option>
+                <option value="">None</option>
                 {filteredStations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </F>
 
+            {/* ── Training Schools ── */}
+            <SectionDivider label="Training Schools" icon="🎓" />
+
+            <F label="Location" hint="Enter the school's location">
+              <input
+                className={inputCls}
+                name="training_school_location"
+                value={form.training_school_location || ''}
+                onChange={handleChange}
+                placeholder="Enter school location…"
+              />
+            </F>
+
+            <F label="School Name" hint="Choose the training school">
+              <select
+                className={selectCls}
+                name="training_school"
+                value={form.training_school || ''}
+                onChange={handleChange}
+              >
+                <option value="">— Choose School —</option>
+                {trainingSchools.map(ts => (
+                  <option key={ts.id} value={ts.id}>{ts.name}</option>
+                ))}
+              </select>
+            </F>
+
             {/* ── Dates ── */}
-            <SectionDivider label="Dates"  />
+            <SectionDivider label="Dates" />
 
             <F label="Issued Date" required>
               <input className={inputCls} type="date" name="issued_date"
@@ -724,7 +752,7 @@ export default function Lendings() {
                 value={form.condition_on_return || ''}
                 onChange={handleChange}
               >
-                <option value=""> None</option>
+                <option value="">None</option>
                 {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </F>

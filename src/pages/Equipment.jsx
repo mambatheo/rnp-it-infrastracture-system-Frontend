@@ -289,9 +289,9 @@ function EquipmentForm({ form, onChange, refs }) {
             <option value="">None</option>
             {stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-        </F>       
+        </F>
 
-        {/* Special Units  */}
+        {/* Units & Departments */}
         <SectionHead label="Units & Departments" />
         <F label="Unit">
           <select className={inputCls} name="issued_to_unit" value={form.issued_to_unit || ''} onChange={onChange}>
@@ -317,16 +317,31 @@ function EquipmentForm({ form, onChange, refs }) {
             {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
         </F>
-        {/* Training School */}
+
+        {/* ── Training Schools ── */}
         <SectionHead label="Training Schools" />
-        <F label="Training School">
-          <select className={inputCls} name="issued_to_training_school" value={form.issued_to_training_school || ''} onChange={onChange}>
-            <option value="">None</option>
-            {(trainingSchools || []).map(ts => <option key={ts.id} value={ts.id}>{ts.name}</option>)}
+        <F label="Location">
+          <input
+            className={inputCls}
+            name="training_school_location"
+            value={form.training_school_location || ''}
+            onChange={onChange}
+            placeholder="Enter school location…"
+          />
+        </F>
+        <F label="School Name">
+          <select
+            className={inputCls}
+            name="issued_to_training_school"
+            value={form.issued_to_training_school || ''}
+            onChange={onChange}
+          >
+            <option value="">— Choose School —</option>
+            {(trainingSchools || []).map(ts => (
+              <option key={ts.id} value={ts.id}>{ts.name}</option>
+            ))}
           </select>
         </F>
-        {/* empty div to keep 2-col grid balanced */}
-        <div />
 
         {/* Dates */}
         <SectionHead label="Dates" />
@@ -433,7 +448,7 @@ export default function Equipment() {
         departments:     r(departments),
         offices:         r(offices),
         users:           r(users),
-        trainingSchools: r(trainingSchools), 
+        trainingSchools: r(trainingSchools),
       });
     });
   }, []);
@@ -446,8 +461,8 @@ export default function Equipment() {
     try {
       const params = { page, page_size: PAGE_SIZE };
       if (debouncedSearch) params.search = debouncedSearch;
-      if (typeFilter)      params['equipment_type__name'] = typeFilter;    
-      
+      if (typeFilter)      params['equipment_type__name'] = typeFilter;
+
       if (locationFilter) {
         const [prefix, id] = locationFilter.split(':');
         if (prefix === 'REG') params['region'] = id;
@@ -492,7 +507,6 @@ export default function Equipment() {
         Object.entries(form).filter(([k]) => !READONLY_FIELDS.includes(k))
       );
 
-
       if (form.equipment_type_name) {
         const cat = refs.categories.find(c => c.name === form.equipment_type_name);
         payload.equipment_type = cat ? cat.id : null;
@@ -502,13 +516,13 @@ export default function Equipment() {
       // Map issued_to_* → Equipment location fields for Deployment
       if (payload.registration_intent === 'Deployment') {
         const locationMap = {
-          issued_to_region:    'region',
-          issued_to_dpu:       'dpu',
-          issued_to_station:   'station',
-          issued_to_unit:      'unit',
-          issued_to_directorate: 'directorate',
-          issued_to_department:  'department',
-          issued_to_office:      'office',
+          issued_to_region:          'region',
+          issued_to_dpu:             'dpu',
+          issued_to_station:         'station',
+          issued_to_unit:            'unit',
+          issued_to_directorate:     'directorate',
+          issued_to_department:      'department',
+          issued_to_office:          'office',
           issued_to_training_school: 'training_school',
         };
         Object.entries(locationMap).forEach(([from, to]) => {
@@ -519,11 +533,11 @@ export default function Equipment() {
       // Nullify empty FK strings
       [
         'brand', 'status', 'region', 'dpu', 'station', 'unit',
-        'directorate', 'department', 'office', 'training_school', 
+        'directorate', 'department', 'office', 'training_school',
         'issued_to_region_office', 'issued_to_region', 'issued_to_dpu_office',
         'issued_to_dpu', 'issued_to_station', 'issued_to_unit',
         'issued_to_directorate', 'issued_to_department', 'issued_to_office',
-        'issued_to_training_school', 
+        'issued_to_training_school',
       ].forEach(k => {
         if (payload[k] === '' || payload[k] === undefined) payload[k] = null;
       });
@@ -566,7 +580,7 @@ export default function Equipment() {
           <p className="text-slate-500 text-sm mt-0.5">Manage IT equipment : {total} total records</p>
         </div>
 
-        {/* Single, clean filter bar  */}
+        {/* Single, clean filter bar */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <input
             className="border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30 w-56"
@@ -646,7 +660,6 @@ export default function Equipment() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">
-                      {/*Show training_school_name if no region/dpu/station */}
                       {[item.region_name, item.dpu_name, item.station_name, item.training_school_name]
                         .filter(Boolean).join(' › ') || '—'}
                     </td>

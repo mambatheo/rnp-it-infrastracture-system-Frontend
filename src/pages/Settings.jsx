@@ -3,7 +3,7 @@ import Layout from '../components/Layout';
 import {
   brandsApi, regionsApi, dpusApi, stationsApi, unitsApi,
   categoriesApi, statusesApi,
-  directoratesApi, departmentsApi, officesApi, dpuOfficesApi, regionOfficesApi
+  directoratesApi, departmentsApi, officesApi, dpuOfficesApi, regionOfficesApi, trainingSchoolsApi,
 } from '../services/api';
 
 const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30";
@@ -38,16 +38,16 @@ const PAGE_SIZE = 20;
 function ResourcePanel({ config }) {
   const { api, label, description, fields, columns } = config;
 
-  const [items, setItems]       = useState([]);
-  const [total, setTotal]       = useState(0);
-  const [page, setPage]         = useState(1);
-  const [loading, setLoading]   = useState(false);
-  const [modal, setModal]       = useState(null);
-  const [selected, setSelected] = useState(null);
-  const [form, setForm]         = useState({});
-  const [submitting, setSub]    = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
-  const [toast, setToast]       = useState({ msg: '', type: 'success' });
+  const [items, setItems]         = useState([]);
+  const [total, setTotal]         = useState(0);
+  const [page, setPage]           = useState(1);
+  const [loading, setLoading]     = useState(false);
+  const [modal, setModal]         = useState(null);
+  const [selected, setSelected]   = useState(null);
+  const [form, setForm]           = useState({});
+  const [submitting, setSub]      = useState(false);
+  const [deleteId, setDeleteId]   = useState(null);
+  const [toast, setToast]         = useState({ msg: '', type: 'success' });
   const [fkOptions, setFkOptions] = useState({});
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -104,7 +104,7 @@ function ResourcePanel({ config }) {
       setModal(null); fetchItems(page);
     } catch (err) {
       const msg = err && typeof err === 'object'
-        ? Object.entries(err).map(([k,v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`).join(' | ')
+        ? Object.entries(err).map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`).join(' | ')
         : 'Failed to save';
       showToast(msg, 'error');
     } finally { setSub(false); }
@@ -120,7 +120,9 @@ function ResourcePanel({ config }) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-slate-800">{label}</h2>
-          <p className="text-slate-400 text-xs mt-0.5">{description} &mdash; <span className="font-medium text-slate-500">{total} total</span></p>
+          <p className="text-slate-400 text-xs mt-0.5">
+            {description} &mdash; <span className="font-medium text-slate-500">{total} total</span>
+          </p>
         </div>
         <button onClick={openCreate}
           className="inline-flex items-center gap-1.5 bg-[#003580] text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-[#002060]">
@@ -170,12 +172,12 @@ function ResourcePanel({ config }) {
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-3 px-1">
           <p className="text-xs text-slate-400">
-            Page {page} of {totalPages} &mdash; {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, total)} of {total}
+            Page {page} of {totalPages} &mdash; {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
           </p>
           <div className="flex gap-2">
-            <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               className="px-3 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-40 hover:bg-slate-50">← Prev</button>
-            <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
               className="px-3 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-40 hover:bg-slate-50">Next →</button>
           </div>
         </div>
@@ -228,7 +230,7 @@ function ResourcePanel({ config }) {
 
 // ─── Tab configs ──────────────────────────────────────────────────────────────
 const TABS = [
-  // ── Classification ─────────────────────────────────────────────────────────
+  // ── Classification ──────────────────────────────────────────────────────────
   {
     key: 'categories',
     label: 'Categories',
@@ -260,7 +262,7 @@ const TABS = [
     ],
   },
 
-  // ── Location ──────────────────────────────────────────────────────────────
+  // ── Location ────────────────────────────────────────────────────────────────
   {
     key: 'regions',
     label: 'Regions',
@@ -272,7 +274,7 @@ const TABS = [
   {
     key: 'region-offices',
     label: 'Region HQ',
-    description: 'Region Offices:',
+    description: 'Region Offices',
     api: regionOfficesApi,
     fields: [
       { name: 'name', label: 'Office Name', type: 'text' },
@@ -286,7 +288,7 @@ const TABS = [
   {
     key: 'dpus',
     label: 'DPUs',
-    description: 'DPU:',
+    description: 'District Police Units',
     api: dpusApi,
     fields: [
       { name: 'name', label: 'DPU Name', type: 'text' },
@@ -300,7 +302,7 @@ const TABS = [
   {
     key: 'dpu-offices',
     label: 'DPU HQ',
-    description: 'DPU Offices:',
+    description: 'DPU Offices',
     api: dpuOfficesApi,
     fields: [
       { name: 'name', label: 'Office Name', type: 'text' },
@@ -314,7 +316,7 @@ const TABS = [
   {
     key: 'stations',
     label: 'Stations',
-    description: 'Stations:',
+    description: 'Police Stations',
     api: stationsApi,
     fields: [
       { name: 'name', label: 'Station Name', type: 'text' },
@@ -323,11 +325,10 @@ const TABS = [
     columns: [
       { key: 'name', label: 'Station' },
       { key: 'dpu_name', label: 'DPU' },
-     
     ],
   },
 
-  // ── Organisation ──────────────────────────────────────────────────────────
+  // ── Organisation ────────────────────────────────────────────────────────────
   {
     key: 'units',
     label: 'Units',
@@ -339,7 +340,7 @@ const TABS = [
   {
     key: 'directorates',
     label: 'Directorates',
-    description: 'Directorates :',
+    description: 'Directorates',
     api: directoratesApi,
     fields: [
       { name: 'name', label: 'Directorate Name', type: 'text' },
@@ -353,7 +354,7 @@ const TABS = [
   {
     key: 'departments',
     label: 'Departments',
-    description: 'Departments:',
+    description: 'Departments',
     api: departmentsApi,
     fields: [
       { name: 'name', label: 'Department Name', type: 'text' },
@@ -368,13 +369,13 @@ const TABS = [
   {
     key: 'offices',
     label: 'Offices',
-    description: 'Offices:',
+    description: 'Offices',
     api: officesApi,
     fields: [
       { name: 'name', label: 'Office Name', type: 'text' },
       { name: 'department', label: 'Department', type: 'fk', optionsApi: (p) => departmentsApi.list(p) },
       { name: 'directorate', label: 'Directorate', type: 'fk', optionsApi: (p) => directoratesApi.list(p) },
-      { name: 'unit', label: 'UNIT', type: 'fk', optionsApi: (p) => unitsApi.list(p) },
+      { name: 'unit', label: 'Unit', type: 'fk', optionsApi: (p) => unitsApi.list(p) },
     ],
     columns: [
       { key: 'name', label: 'Office' },
@@ -383,14 +384,42 @@ const TABS = [
       { key: 'unit_name', label: 'Unit' },
     ],
   },
+
+  // ── Training Schools ────────────────────────────────────────────────────────
+  {
+    key: 'trainingschools',
+    label: 'Training Schools',
+    description: 'RNP Training Schools',
+    api: trainingSchoolsApi,
+    fields: [
+      { name: 'name', label: 'School Name', type: 'text' },
+      { name: 'location', label: 'Location', type: 'text' },
+    ],
+    columns: [
+      { key: 'name', label: 'Training School' },
+      { key: 'location', label: 'Location' },
+    ],
+  },
 ];
 
 // ─── Group tabs for navigation ────────────────────────────────────────────────
 const TAB_GROUPS = [
-  { label: 'Classification', keys: ['categories', 'statuses', 'brands'] },
-  { label: 'Territorial Units', keys: ['regions', 'region-offices', 'dpus', 'dpu-offices', 'stations'] },
- 
-  { label: ' Special Units ',   keys: ['units', 'directorates', 'departments', 'offices'] },
+  {
+    label: 'Classification',
+    keys: ['categories', 'statuses', 'brands'],
+  },
+  {
+    label: 'Territorial Units',
+    keys: ['regions', 'region-offices', 'dpus', 'dpu-offices', 'stations'],
+  },
+  {
+    label: 'Special Units',
+    keys: ['units', 'directorates', 'departments', 'offices'],
+  },
+  {
+    label: 'Training Schools',
+    keys: ['trainingschools'],
+  },
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -403,7 +432,7 @@ export default function Settings() {
       <div className="p-6 max-w-6xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-800">Settings</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Manage  data used across the system</p>
+          <p className="text-slate-500 text-sm mt-0.5">Manage reference data used across the system</p>
         </div>
 
         {/* Grouped Tabs */}
@@ -417,7 +446,9 @@ export default function Settings() {
                   return (
                     <button key={key} onClick={() => setActiveTab(key)}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                        ${activeTab === key ? 'bg-[#003580] text-white shadow' : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`}>
+                        ${activeTab === key
+                          ? 'bg-[#003580] text-white shadow'
+                          : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`}>
                       {t?.label}
                     </button>
                   );
