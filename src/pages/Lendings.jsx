@@ -44,7 +44,7 @@ function EqCombobox({ allEquipment, typeFilter, value, onChange }) {
   return (
     <div ref={ref} className="relative">
       <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400 bg-white transition-all">
-        <span className="pl-3 text-slate-400 text-sm">🔍</span>
+        <span className="pl-3 text-slate-400 text-sm"> </span>
         <input
           type="text"
           className="flex-1 px-2 py-2.5 text-sm outline-none bg-transparent"
@@ -404,7 +404,7 @@ export default function Lendings() {
         {/* ── Filters ── */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <input
-            className="flex-1 min-w-[200px] border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-all"
+            className="w-[400px] border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-all"
             placeholder="Search borrower, serial, purpose…"
             value={tableSearch}
             onChange={e => { setTableSearch(e.target.value); setPage(1); }}
