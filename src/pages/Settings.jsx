@@ -393,11 +393,11 @@ const TABS = [
     api: trainingSchoolsApi,
     fields: [
       { name: 'name', label: 'School Name', type: 'text' },
-      { name: 'location', label: 'Location', type: 'text' },
+     
     ],
     columns: [
       { key: 'name', label: 'Training School' },
-      { key: 'location', label: 'Location' },
+     
     ],
   },
 ];
