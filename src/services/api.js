@@ -485,16 +485,17 @@ export const maintenanceApi = {
 
 // ─── Convenience re-exports ───────────────────────────────────────────────────
 export const settingsApi = {
-  brands:       brandsApi,
-  regions:      regionsApi,
-  dpus:         dpusApi,
-  stations:     stationsApi,
-  units:        unitsApi,
-  categories:   categoriesApi,
-  statuses:     statusesApi,
-  directorates: directoratesApi,
-  departments:  departmentsApi,
-  offices:      officesApi,
+  brands:          brandsApi,
+  regions:         regionsApi,
+  dpus:            dpusApi,
+  stations:        stationsApi,
+  units:           unitsApi,
+  categories:      categoriesApi,
+  statuses:        statusesApi,
+  directorates:    directoratesApi,
+  departments:     departmentsApi,
+  offices:         officesApi,
+  trainingSchools: trainingSchoolsApi,
 };
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
@@ -611,6 +612,28 @@ export const reportsApi = {
   dpuPdfById:   (id, name, onProgress) => downloadReport(
     `/equipment/reports/dpu/pdf/${id}/`,
     `dpu_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
+    onProgress,
+  ),
+
+  // ── Training Schools ───────────────────────────────────────────────────────
+  trainingschoolExcelAll: (onProgress) => downloadReport(
+    '/equipment/reports/trainingschool/excel/',
+    `trainingschools_all_${date()}.xlsx`,
+    onProgress,
+  ),
+  trainingschoolPdfAll: (onProgress) => downloadReport(
+    '/equipment/reports/trainingschool/pdf/',
+    `trainingschools_all_${date()}.pdf`,
+    onProgress,
+  ),
+  trainingschoolExcelById: (id, name, onProgress) => downloadReport(
+    `/equipment/reports/trainingschool/excel/${id}/`,
+    `trainingschool_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.xlsx`,
+    onProgress,
+  ),
+  trainingschoolPdfById: (id, name, onProgress) => downloadReport(
+    `/equipment/reports/trainingschool/pdf/${id}/`,
+    `trainingschool_${(name || 'report').replace(/ /g, '_').toLowerCase()}_${date()}.pdf`,
     onProgress,
   ),
 };

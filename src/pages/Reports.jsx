@@ -208,6 +208,7 @@ export default function Reports() {
     unit_counts      = {},
     region_counts    = {},
     dpu_counts       = {},
+    trainingschool_counts = {},
   } = data ?? {};
 
   const eqTypeKeys    = Object.keys(equipment_counts).sort();
@@ -219,10 +220,12 @@ export default function Reports() {
   const unitEntries   = Object.entries(unit_counts).sort((a, b)   => a[1].name.localeCompare(b[1].name));
   const regionEntries = Object.entries(region_counts).sort((a, b) => a[1].name.localeCompare(b[1].name));
   const dpuEntries    = Object.entries(dpu_counts).sort((a, b)    => a[1].name.localeCompare(b[1].name));
+  const trainingSchoolEntries = Object.entries(trainingschool_counts).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
   const unitTotal   = unitEntries.reduce((s, [, v])   => s + v.count, 0);
   const regionTotal = regionEntries.reduce((s, [, v]) => s + v.count, 0);
   const dpuTotal    = dpuEntries.reduce((s, [, v])    => s + v.count, 0);
+  const trainingSchoolTotal = trainingSchoolEntries.reduce((s, [, v]) => s + v.count, 0);
 
   const emptyMsg = (label) => (
     <p className="text-slate-400 text-sm col-span-3 py-4 text-center">
@@ -336,6 +339,24 @@ export default function Reports() {
                   count={count} total={dpuTotal}
                   excelKey={`dpu:excel:${id}`} excelFn={() => reportsApi.dpuExcelById(id, name)}
                   pdfKey={`dpu:pdf:${id}`}     pdfFn={()   => reportsApi.dpuPdfById(id, name)}
+                />
+              ))}
+            </Section>
+
+            {/* ── TRAINING SCHOOLS ─────────────────────────────────────── */}
+            <Section
+              title="Training School" subtitle="All Training Schools" accent={ACCENT}
+              totalValue={trainingSchoolTotal}
+              totalLabel={`Across ${trainingSchoolEntries.length} school${trainingSchoolEntries.length !== 1 ? 's' : ''}`}
+              allExcelKey="all:trainingschool:excel" allExcelFn={() => reportsApi.trainingschoolExcelAll()}
+              allPdfKey="all:trainingschool:pdf"     allPdfFn={()   => reportsApi.trainingschoolPdfAll()}
+              gridLabel="Per Training School"
+            >
+              {trainingSchoolEntries.length === 0 ? emptyMsg('training schools') : trainingSchoolEntries.map(([id, { name, count }]) => (
+                <ReportCard key={id} label={name} color={ACCENT}
+                  count={count} total={trainingSchoolTotal}
+                  excelKey={`trainingschool:excel:${id}`} excelFn={() => reportsApi.trainingschoolExcelById(id, name)}
+                  pdfKey={`trainingschool:pdf:${id}`}     pdfFn={()   => reportsApi.trainingschoolPdfById(id, name)}
                 />
               ))}
             </Section>

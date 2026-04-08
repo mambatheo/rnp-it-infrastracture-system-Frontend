@@ -103,6 +103,7 @@ export default function Dashboard() {
   const unitCounts   = data?.unit_counts       ?? {};
   const regionCounts = data?.region_counts     ?? {};
   const dpuCounts    = data?.dpu_counts        ?? {};
+  const trainingSchoolCounts = data?.trainingschool_counts ?? {};
 
   const eqTypeKeys    = Object.keys(eqCounts).sort();
   const stockTypeKeys = Object.keys(stockCounts).sort();
@@ -112,10 +113,12 @@ export default function Dashboard() {
   const unitEntries   = Object.entries(unitCounts).sort((a, b) => a[1].name.localeCompare(b[1].name));
   const regionEntries = Object.entries(regionCounts).sort((a, b) => a[1].name.localeCompare(b[1].name));
   const dpuEntries    = Object.entries(dpuCounts).sort((a, b) => a[1].name.localeCompare(b[1].name));
+  const trainingSchoolEntries = Object.entries(trainingSchoolCounts).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
   const unitTotal   = unitEntries.reduce((s, [, v]) => s + v.count, 0);
   const regionTotal = regionEntries.reduce((s, [, v]) => s + v.count, 0);
   const dpuTotal    = dpuEntries.reduce((s, [, v]) => s + v.count, 0);
+  const trainingSchoolTotal = trainingSchoolEntries.reduce((s, [, v]) => s + v.count, 0);
 
   const ACCENT = '#003580';
 
@@ -217,6 +220,19 @@ export default function Dashboard() {
                       <StatCard key={id} label={name}
                         value={count} total={unitTotal} color={ACCENT} />
                     )
+                  ))
+              }
+            </Section>
+            
+            {/* ── By Training School ── */}
+            <Section title="Organised by Training School" accent={ACCENT}
+              total={trainingSchoolTotal}
+              totalLabel={`Across ${trainingSchoolEntries.length} school${trainingSchoolEntries.length !== 1 ? 's' : ''}`}>
+              {trainingSchoolEntries.length === 0
+                ? <p className="text-slate-400 text-sm col-span-3 text-center py-4">No school with equipment.</p>
+                : trainingSchoolEntries.map(([id, { name, count }]) => (
+                    <StatCard key={id} label={name}
+                      value={count} total={trainingSchoolTotal} color={ACCENT} />
                   ))
               }
             </Section>

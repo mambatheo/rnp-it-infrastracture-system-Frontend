@@ -114,12 +114,7 @@ function UserForm({ form, onChange, isEdit = false, errors = {}, dpus, regions, 
         </Field>
         <Field label="Training School">
           <SelectField
-            name="trainingSchool"
-            value={form.trainingSchool}
-            onChange={onChange}
-            options={trainingSchools}
-            placeholder="None"
-          />
+            name="trainingSchool"  value={form.trainingSchool}  onChange={onChange}  options={trainingSchools}  placeholder="None" />
         </Field>
 
         {errors.non_field_errors && (
