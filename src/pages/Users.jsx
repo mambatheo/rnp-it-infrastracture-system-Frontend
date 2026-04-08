@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
-import { usersApi, dpusApi, regionsApi, unitsApi } from '../services/api';
+import { usersApi, dpusApi, regionsApi, unitsApi, trainingSchoolsApi } from '../services/api';
 import { ROLE_LABELS } from '../config/permissions';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ const STATUS_BADGE = {
 const emptyForm = {
   email: '', first_name: '', last_name: '',
   phone_number: '', role: '',
-  dpu: '', region: '', unit: '',
+  dpu: '', region: '', unit: '', trainingSchool: '',
   password: '', password_confirm: '',
 };
 
@@ -49,8 +49,7 @@ function Field({ label, required, children }) {
 
 const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003580]/30";
 
-// helper: build select options with a blank prompt
-function SelectField({ name, value, onChange, options, placeholder = '— None —', cls }) {
+function SelectField({ name, value, onChange, options, placeholder = 'None', cls }) {
   return (
     <select className={cls || inputCls} name={name} value={value ?? ''} onChange={onChange}>
       <option value="">{placeholder}</option>
@@ -60,7 +59,7 @@ function SelectField({ name, value, onChange, options, placeholder = '— None �
 }
 
 // ─── User Form ────────────────────────────────────────────────────────────────
-function UserForm({ form, onChange, isEdit = false, errors = {}, dpus, regions, units }) {
+function UserForm({ form, onChange, isEdit = false, errors = {}, dpus, regions, units, trainingSchools }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -91,31 +90,42 @@ function UserForm({ form, onChange, isEdit = false, errors = {}, dpus, regions, 
         {errors.role && <p className="text-xs text-red-500 mt-1">{errors.role}</p>}
       </Field>
 
-      {/* ── Location assignment (at least one required on create) ── */}
+      {/* ── Location assignment ── */}
       <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
           Location Assignment <span className="text-red-500">*</span>
           <span className="text-slate-400 font-normal ml-1">(at least one)</span>
         </p>
 
-        {/* Warn when no location data has been seeded yet */}
-        {dpus.length === 0 && regions.length === 0 && units.length === 0 && (
+        {dpus.length === 0 && regions.length === 0 && units.length === 0 && trainingSchools.length === 0 && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            No locations available yet. Go to <strong>Settings</strong> to create DPUs, Regions, or Units first.
+            No locations available yet. Go to <strong>Settings</strong> to create DPUs, Regions, Units, or Training Schools first.
           </p>
         )}
 
         <Field label="DPU">
-          <SelectField name="dpu" value={form.dpu} onChange={onChange} options={dpus} placeholder="— None —" />
+          <SelectField name="dpu" value={form.dpu} onChange={onChange} options={dpus} placeholder="None" />
         </Field>
         <Field label="Region">
-          <SelectField name="region" value={form.region} onChange={onChange} options={regions} placeholder="— None —" />
+          <SelectField name="region" value={form.region} onChange={onChange} options={regions} placeholder="None" />
         </Field>
         <Field label="Unit">
-          <SelectField name="unit" value={form.unit} onChange={onChange} options={units} placeholder="— None —" />
+          <SelectField name="unit" value={form.unit} onChange={onChange} options={units} placeholder="None" />
         </Field>
+        <Field label="Training School">
+          <SelectField
+            name="trainingSchool"
+            value={form.trainingSchool}
+            onChange={onChange}
+            options={trainingSchools}
+            placeholder="None"
+          />
+        </Field>
+
         {errors.non_field_errors && (
-          <p className="text-xs text-red-500">{Array.isArray(errors.non_field_errors) ? errors.non_field_errors[0] : errors.non_field_errors}</p>
+          <p className="text-xs text-red-500">
+            {Array.isArray(errors.non_field_errors) ? errors.non_field_errors[0] : errors.non_field_errors}
+          </p>
         )}
       </div>
 
@@ -167,7 +177,7 @@ function Toast({ msg, type }) {
   );
 }
 
-// ─── helpers to resolve names from ID ─────────────────────────────────────────
+// ─── Helper: resolve name from ID ─────────────────────────────────────────────
 function nameById(list, id) {
   if (!id) return '—';
   const found = list.find(x => String(x.id) === String(id));
@@ -176,31 +186,32 @@ function nameById(list, id) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Users() {
-  const [users, setUsers]         = useState([]);
-  const [total, setTotal]         = useState(0);
-  const [page, setPage]           = useState(1);
-  const [search, setSearch]       = useState('');
-  const [loading, setLoading]     = useState(false);
+  const [users, setUsers]           = useState([]);
+  const [total, setTotal]           = useState(0);
+  const [page, setPage]             = useState(1);
+  const [search, setSearch]         = useState('');
+  const [loading, setLoading]       = useState(false);
 
   // lookup lists
-  const [dpus,    setDpus]    = useState([]);
-  const [regions, setRegions] = useState([]);
-  const [units,   setUnits]   = useState([]);
+  const [dpus,           setDpus]           = useState([]);
+  const [regions,        setRegions]        = useState([]);
+  const [units,          setUnits]          = useState([]);
+  const [trainingSchools, setTrainingSchools] = useState([]);
 
-  const [modal, setModal]         = useState(null); // 'create' | 'edit' | 'confirm'
-  const [selected, setSelected]   = useState(null);
-  const [form, setForm]           = useState(emptyForm);
-  const [formErrors, setFormErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
+  const [modal, setModal]               = useState(null); // 'create' | 'edit'
+  const [selected, setSelected]         = useState(null);
+  const [form, setForm]                 = useState(emptyForm);
+  const [formErrors, setFormErrors]     = useState({});
+  const [submitting, setSubmitting]     = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
 
-  const [resetModalOpen, setResetModalOpen] = useState(false);
-  const [resetUser, setResetUser] = useState(null);
-  const [resetForm, setResetForm] = useState(emptyResetForm);
-  const [resetErrors, setResetErrors] = useState({});
-  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetModalOpen,   setResetModalOpen]   = useState(false);
+  const [resetUser,        setResetUser]        = useState(null);
+  const [resetForm,        setResetForm]        = useState(emptyResetForm);
+  const [resetErrors,      setResetErrors]      = useState({});
+  const [resetSubmitting,  setResetSubmitting]  = useState(false);
 
-  const [toast, setToast]         = useState({ msg: '', type: 'success' });
+  const [toast, setToast] = useState({ msg: '', type: 'success' });
 
   const pageSize = 15;
 
@@ -213,14 +224,16 @@ export default function Users() {
   useEffect(() => {
     const fetchLookups = async () => {
       try {
-        const [d, r, u] = await Promise.all([
+        const [d, r, u, ts] = await Promise.all([
           dpusApi.list({ page_size: 500 }),
           regionsApi.list({ page_size: 500 }),
           unitsApi.list({ page_size: 500 }),
+          trainingSchoolsApi.list({ page_size: 500 }),
         ]);
         setDpus(d.results || d || []);
         setRegions(r.results || r || []);
         setUnits(u.results || u || []);
+        setTrainingSchools(ts.results || ts || []);
       } catch {
         // non-fatal — dropdowns just stay empty
       }
@@ -235,7 +248,7 @@ export default function Users() {
       const data = await usersApi.list({ page, search, page_size: pageSize });
       setUsers(data.results || []);
       setTotal(data.count || 0);
-    } catch (e) {
+    } catch {
       showToast('Failed to load users', 'error');
     } finally {
       setLoading(false);
@@ -251,7 +264,7 @@ export default function Users() {
     setFormErrors(fe => ({ ...fe, [name]: undefined, non_field_errors: undefined }));
   };
 
-  const handleResetChange = (e) => {
+  const handleResetChange = e => {
     const { name, value } = e.target;
     setResetForm(f => ({ ...f, [name]: value }));
     setResetErrors(errs => ({ ...errs, [name]: undefined, non_field_errors: undefined }));
@@ -267,9 +280,10 @@ export default function Users() {
   const openEdit = user => {
     setForm({
       ...user,
-      dpu:    user.dpu    ?? '',
-      region: user.region ?? '',
-      unit:   user.unit   ?? '',
+      dpu:            user.dpu             ?? '',
+      region:         user.region          ?? '',
+      unit:           user.unit            ?? '',
+      trainingSchool: user.training_school ?? '',
       password: '', password_confirm: '',
     });
     setFormErrors({});
@@ -277,7 +291,7 @@ export default function Users() {
     setModal('edit');
   };
 
-  const openResetPassword = (user) => {
+  const openResetPassword = user => {
     setResetUser(user);
     setResetForm(emptyResetForm);
     setResetErrors({});
@@ -286,14 +300,14 @@ export default function Users() {
 
   // ── Create ─────────────────────────────────────────────────────────────────
   const handleCreate = async () => {
-    const dpuId    = form.dpu?.trim()    || null;
-    const regionId = form.region?.trim() || null;
-    const unitId   = form.unit?.trim()   || null;
+    const dpuId    = form.dpu?.trim()            || null;
+    const regionId = form.region?.trim()         || null;
+    const unitId   = form.unit?.trim()           || null;
+    const tsId     = form.trainingSchool?.trim() || null;
 
-    // Guard: at least one UUID location must be selected
-    const hasLocation = [dpuId, regionId, unitId].some(Boolean);
+    const hasLocation = [dpuId, regionId, unitId, tsId].some(Boolean);
     if (!hasLocation) {
-      setFormErrors({ non_field_errors: 'At least one of DPU, Region, or Unit must be assigned to the user.' });
+      setFormErrors({ non_field_errors: 'At least one of DPU, Region, Unit, or Training School must be assigned.' });
       return;
     }
 
@@ -307,10 +321,10 @@ export default function Users() {
         role:             form.role,
         password:         form.password,
         password_confirm: form.password_confirm,
-        // Send explicit null for unset locations — backend marks them allow_null:True
-        dpu:    dpuId,
-        region: regionId,
-        unit:   unitId,
+        dpu:              dpuId,
+        region:           regionId,
+        unit:             unitId,
+        training_school:  tsId,
       };
       await usersApi.create(payload);
       showToast('User created successfully');
@@ -329,16 +343,16 @@ export default function Users() {
     setSubmitting(true);
     try {
       const payload = {
-        email:        form.email,
-        first_name:   form.first_name,
-        last_name:    form.last_name,
-        phone_number: form.phone_number || undefined,
-        role:         form.role,
-        is_active:    form.is_active === 'true' || form.is_active === true,
-        // send null to clear, or the UUID pk to set
-        dpu:    form.dpu?.trim()    || null,
-        region: form.region?.trim() || null,
-        unit:   form.unit?.trim()   || null,
+        email:           form.email,
+        first_name:      form.first_name,
+        last_name:       form.last_name,
+        phone_number:    form.phone_number || undefined,
+        role:            form.role,
+        is_active:       form.is_active === 'true' || form.is_active === true,
+        dpu:             form.dpu?.trim()            || null,
+        region:          form.region?.trim()         || null,
+        unit:            form.unit?.trim()           || null,
+        training_school: form.trainingSchool?.trim() || null,
       };
       await usersApi.update(selected.id, payload);
       showToast('User updated');
@@ -353,7 +367,7 @@ export default function Users() {
   };
 
   // ── Activate / Deactivate ──────────────────────────────────────────────────
-  const handleToggleActive = (user) => {
+  const handleToggleActive = user => {
     const action = user.is_active ? 'deactivate' : 'activate';
     setConfirmAction({
       message: `Are you sure you want to ${action} ${user.first_name} ${user.last_name}?`,
@@ -394,7 +408,7 @@ export default function Users() {
     setResetSubmitting(true);
     try {
       await usersApi.resetPw(resetUser.id, {
-        new_password: resetForm.new_password,
+        new_password:     resetForm.new_password,
         confirm_password: resetForm.confirm_password,
       });
       showToast('Password reset. User must change it on next login.');
@@ -415,6 +429,7 @@ export default function Users() {
   return (
     <Layout>
       <div className="p-6 max-w-7xl mx-auto">
+
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -475,10 +490,11 @@ export default function Users() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs leading-relaxed">
-                      {u.dpu    && <div><span className="font-medium text-slate-600">DPU:</span> {nameById(dpus, u.dpu)}</div>}
-                      {u.region && <div><span className="font-medium text-slate-600">Region:</span> {nameById(regions, u.region)}</div>}
-                      {u.unit   && <div><span className="font-medium text-slate-600">Unit:</span> {nameById(units, u.unit)}</div>}
-                      {!u.dpu && !u.region && !u.unit && '—'}
+                      {u.dpu             && <div><span className="font-medium text-slate-600">DPU:</span> {nameById(dpus, u.dpu)}</div>}
+                      {u.region          && <div><span className="font-medium text-slate-600">Region:</span> {nameById(regions, u.region)}</div>}
+                      {u.unit            && <div><span className="font-medium text-slate-600">Unit:</span> {nameById(units, u.unit)}</div>}
+                      {u.training_school && <div><span className="font-medium text-slate-600">School:</span> {nameById(trainingSchools, u.training_school)}</div>}
+                      {!u.dpu && !u.region && !u.unit && !u.training_school && '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_BADGE[u.is_active]}`}>
@@ -497,7 +513,9 @@ export default function Users() {
                         </button>
                         <button onClick={() => handleToggleActive(u)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                            ${u.is_active ? 'bg-orange-100 hover:bg-orange-200 text-orange-700' : 'bg-green-100 hover:bg-green-200 text-green-700'}`}>
+                            ${u.is_active
+                              ? 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+                              : 'bg-green-100 hover:bg-green-200 text-green-700'}`}>
                           {u.is_active ? 'Deactivate' : 'Activate'}
                         </button>
                         <button onClick={() => handleDelete(u)}
@@ -527,10 +545,18 @@ export default function Users() {
         </div>
       </div>
 
-      {/* ── Modals ── */}
+      {/* ── Create Modal ── */}
       {modal === 'create' && (
         <Modal title="Create New User" onClose={() => setModal(null)}>
-          <UserForm form={form} onChange={handleChange} errors={formErrors} dpus={dpus} regions={regions} units={units} />
+          <UserForm
+            form={form}
+            onChange={handleChange}
+            errors={formErrors}
+            dpus={dpus}
+            regions={regions}
+            units={units}
+            trainingSchools={trainingSchools}
+          />
           <div className="flex gap-3 justify-end mt-6">
             <button onClick={() => setModal(null)} className="px-4 py-2 rounded-lg border text-sm">Cancel</button>
             <button onClick={handleCreate} disabled={submitting}
@@ -541,9 +567,19 @@ export default function Users() {
         </Modal>
       )}
 
+      {/* ── Edit Modal ── */}
       {modal === 'edit' && selected && (
         <Modal title={`Edit — ${selected.first_name} ${selected.last_name}`} onClose={() => setModal(null)}>
-          <UserForm form={form} onChange={handleChange} isEdit errors={formErrors} dpus={dpus} regions={regions} units={units} />
+          <UserForm
+            form={form}
+            onChange={handleChange}
+            isEdit
+            errors={formErrors}
+            dpus={dpus}
+            regions={regions}
+            units={units}
+            trainingSchools={trainingSchools}
+          />
           <div className="flex gap-3 justify-end mt-6">
             <button onClick={() => setModal(null)} className="px-4 py-2 rounded-lg border text-sm">Cancel</button>
             <button onClick={handleEdit} disabled={submitting}
@@ -554,6 +590,7 @@ export default function Users() {
         </Modal>
       )}
 
+      {/* ── Confirm Dialog ── */}
       {confirmAction && (
         <ConfirmDialog
           message={confirmAction.message}
@@ -562,11 +599,12 @@ export default function Users() {
         />
       )}
 
+      {/* ── Reset Password Modal ── */}
       {resetModalOpen && resetUser && (
         <Modal title={`Reset Password — ${resetUser.first_name} ${resetUser.last_name}`} onClose={() => setResetModalOpen(false)}>
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Set a new password for this user. They’ll be forced to change it after logging in.
+              Set a new password for this user. They'll be forced to change it after logging in.
             </p>
             <Field label="New Password" required>
               <input

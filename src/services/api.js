@@ -417,7 +417,7 @@ export const officesApi = {
   update: (id, d) => put(`/equipment/offices/${id}/`, d),
   delete: (id)    => del(`/equipment/offices/${id}/`),
 };
-
+//------training schools------------------
 export const trainingSchoolsApi = {
   list:   (p)     => get('/equipment/training-schools/', p),
   create: (data)  => post('/equipment/training-schools/', data),
@@ -498,9 +498,7 @@ export const settingsApi = {
 };
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
-// All download methods now use the Celery async polling pattern via
-// downloadReport(). Each method returns a Promise — awaiting it keeps the
-// spinner alive until the file actually arrives in the browser.
+
 export const reportsApi = {
 
   // Aggregated counts — single call that populates the entire Reports page
@@ -618,7 +616,7 @@ export const reportsApi = {
 };
 
 
-// Add these to your existing services/api.js
+
 
 // ── Slideshow API ──────────────────────────────────────────────────────────────
 
@@ -649,8 +647,7 @@ export const slideshowApi = {
 };
 
 // ── NOTE ───────────────────────────────────────────────────────────────────────
-// If your apiFetch helper always sets Content-Type: application/json,
-// you'll need to handle the upload separately. Here's a standalone helper:
+
 
 export async function uploadSlideshowImage(file, caption = '', order = 0) {
   const fd = new FormData();
