@@ -213,7 +213,7 @@ export default function Layout({ children }) {
               margin: '8px 0 0',
               letterSpacing: '1px',
             }}>
-              ITis
+              EquipmentTrack
             </p>
           )}
         </div>
