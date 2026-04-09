@@ -162,7 +162,7 @@ export default function AuthPage() {
                 Rwanda National Police
               </h1>
               <p className="text-blue-300/80 text-xs font-medium tracking-[0.2em] uppercase mt-1">
-                IT Infrastructure System
+                EquipmentTrack
               </p>
               <div className="mt-5 w-full flex items-center gap-3">
                 <div className="flex-1 h-px bg-white/10" />
