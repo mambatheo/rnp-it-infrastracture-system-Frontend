@@ -161,7 +161,7 @@ export default function AuthPage() {
               <h1 className="text-white text-xl font-bold tracking-wide text-center leading-tight">
                 Rwanda National Police
               </h1>
-              <p className="text-blue-300/80 text-xs font-medium tracking-[0.2em] mt-1">
+              <p className="text-blue-300/80 text-sm font-medium tracking-[0.2em] mt-1">
                 EquipmentTrack
               </p>
               <div className="mt-5 w-full flex items-center gap-3">
